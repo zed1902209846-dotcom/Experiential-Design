@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aac5222cf7d635e46be0e531654d9534, type: 3}
+  m_Name: moon
+  m_EditorClassIdentifier: Assembly-CSharp::SolarSystemAR.CelestialBodyData
+  id: moon
+  displayName: "\u6708\u7403"
+  englishName: The Moon
+  shortDescription: "\u6708\u7403\u662F\u5730\u7403\u552F\u4E00\u7684\u5929\u7136\u536B\u661F\uFF0C\u56E0\u6F6E\u6C50\u9501\u5B9A\u6C38\u8FDC\u4EE5\u540C\u4E00\u9762\u671D\u5411\u5730\u7403\u3002"
+  shortDescriptionEn: The Moon is Earth's only natural satellite, tidally locked
+    so the same face always points at us.
+  fullDescription: "\u6708\u7403\u8868\u9762\u8986\u76D6\u6708\u58E4\uFF0C\u6B63\u9762\u7684\u6708\u6D77\u7531\u8FDC\u53E4\u706B\u5C71\u6D3B\u52A8\u5F62\u6210\u7684\u7384\u6B66\u5CA9\u5E73\u539F\u6784\u6210\u3002\u5B83\u4EE5\u6BCF\u5E74\u7EA6
+    3.8 \u5398\u7C73\u7684\u901F\u5EA6\u7F13\u6162\u8FDC\u79BB\u5730\u7403\uFF1B\u6708\u76F8\u53D8\u5316\u6E90\u4E8E\u65E5\u3001\u5730\u3001\u6708\u4E09\u8005\u7684\u51E0\u4F55\u5173\u7CFB\u3002"
+  fullDescriptionEn: The Moon's surface is blanketed by regolith; its near-side maria
+    are ancient volcanic basalt plains. It drifts about 3.8 cm farther from Earth
+    each year, and its phases come from the Sun-Earth-Moon geometry.
+  diameter: 3,475 km
+  rotationPeriod: "27.3 \u5929\uFF08\u540C\u6B65\u81EA\u8F6C\uFF09"
+  orbitalPeriod: "\u7ED5\u5730\u7403 27.3 \u5929"
+  age: "\u7EA6 45 \u4EBF\u5E74"
+  characteristics: "\u6F6E\u6C50\u9501\u5B9A\uFF1B\u51E0\u4E4E\u65E0\u5927\u6C14\uFF1B\u6708\u6D77\u4E0E\u9AD8\u5730\u5730\u8C8C\uFF1B\u6B63\u7F13\u6162\u8FDC\u79BB\u5730\u7403"
+  icon: {fileID: 0}
+  narration: {fileID: 0}

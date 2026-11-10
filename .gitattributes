@@ -1,0 +1,22 @@
+* text=auto eol=lf
+
+# Unity scenes/prefabs/assets are YAML: keep them LF and do not treat as binary
+*.unity   text eol=lf
+*.prefab  text eol=lf
+*.asset   text eol=lf
+*.mat     text eol=lf
+*.meta    text eol=lf
+*.controller text eol=lf
+*.shadergraph text eol=lf
+
+# Binary art / packages -> Git LFS (GitHub hard-limits files at 100 MB)
+*.psd   filter=lfs diff=lfs merge=lfs -text
+*.tgz   filter=lfs diff=lfs merge=lfs -text
+*.fbx   filter=lfs diff=lfs merge=lfs -text
+*.apk   filter=lfs diff=lfs merge=lfs -text
+*.aab   filter=lfs diff=lfs merge=lfs -text
+*.unitypackage filter=lfs diff=lfs merge=lfs -text
+*.mp4   filter=lfs diff=lfs merge=lfs -text
+*.wav   filter=lfs diff=lfs merge=lfs -text
+*.*.meta text eol=lf
+

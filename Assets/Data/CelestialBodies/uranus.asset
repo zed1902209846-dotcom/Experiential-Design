@@ -1,0 +1,34 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aac5222cf7d635e46be0e531654d9534, type: 3}
+  m_Name: uranus
+  m_EditorClassIdentifier: Assembly-CSharp::SolarSystemAR.CelestialBodyData
+  id: uranus
+  displayName: "\u5929\u738B\u661F"
+  englishName: Uranus
+  shortDescription: "\u5929\u738B\u661F\u81EA\u8F6C\u8F74\u503E\u89D2\u7EA6 98\xB0\uFF0C\u51E0\u4E4E\u662F\u201C\u8EBA\u7740\u201D\u7ED5\u592A\u9633\u6EDA\u52A8\uFF0C\u5448\u6DE1\u84DD\u8272\u3002"
+  shortDescriptionEn: "Uranus spins on its side with a 98\xB0 axial tilt, rolling
+    around the Sun in pale blue."
+  fullDescription: "\u5929\u738B\u661F\u662F\u51B0\u5DE8\u884C\u661F\uFF0C\u5927\u6C14\u4E2D\u7684\u7532\u70F7\u5438\u6536\u7EA2\u5149\u4F7F\u5176\u5448\u9752\u84DD\u8272\u3002\u6781\u7AEF\u7684\u8F74\u503E\u89D2\u4F7F\u5176\u4E24\u6781\u5404\u6709\u7EA6
+    42 \u5E74\u7684\u6781\u663C\u4E0E\u6781\u591C\u3002\u5B83\u62E5\u6709 13 \u6761\u6697\u6DE1\u73AF\u5E26\u548C
+    20 \u591A\u9897\u4EE5\u6587\u5B66\u4EBA\u7269\u547D\u540D\u7684\u536B\u661F\u3002"
+  fullDescriptionEn: Uranus is an ice giant; methane in its atmosphere absorbs red
+    light, giving a cyan hue. Its extreme tilt gives each pole ~42 years of daylight
+    and night. It has 13 faint rings and 20+ moons named after literary characters.
+  diameter: 51,118 km
+  rotationPeriod: "17 \u5C0F\u65F6 14 \u5206\uFF08\u9006\u5411\uFF09"
+  orbitalPeriod: "84 \u5E74"
+  age: "\u7EA6 46 \u4EBF\u5E74"
+  characteristics: "98\xB0 \u8F74\u503E\u89D2\uFF1B\u7532\u70F7\u81F4\u84DD\uFF1B\u51B0\u5DE8\u884C\u661F\uFF1B13
+    \u6761\u6697\u6DE1\u73AF\u5E26"
+  icon: {fileID: 0}
+  narration: {fileID: 0}

@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aac5222cf7d635e46be0e531654d9534, type: 3}
+  m_Name: earth
+  m_EditorClassIdentifier: Assembly-CSharp::SolarSystemAR.CelestialBodyData
+  id: earth
+  displayName: "\u5730\u7403"
+  englishName: Earth
+  shortDescription: "\u5730\u7403\u662F\u76EE\u524D\u5DF2\u77E5\u552F\u4E00\u5B58\u5728\u751F\u547D\u7684\u884C\u661F\uFF0C\u8868\u9762
+    71% \u88AB\u6DB2\u6001\u6C34\u8986\u76D6\u3002"
+  shortDescriptionEn: Earth is the only known life-bearing planet, with liquid water
+    covering 71% of its surface.
+  fullDescription: "\u5730\u7403\u62E5\u6709\u6C2E\u6C27\u4E3A\u4E3B\u7684\u5927\u6C14\u5C42\u3001\u5168\u7403\u78C1\u573A\u4E0E\u6D3B\u8DC3\u7684\u677F\u5757\u8FD0\u52A8\uFF0C\u4E09\u8005\u5171\u540C\u4FDD\u62A4\u5E76\u5851\u9020\u4E86\u751F\u547D\u73AF\u5883\u3002\u6708\u7403\u4F5C\u4E3A\u5929\u7136\u536B\u661F\u7A33\u5B9A\u4E86\u5730\u8F74\u503E\u89D2\uFF0C\u4F7F\u6C14\u5019\u957F\u671F\u4FDD\u6301\u76F8\u5BF9\u7A33\u5B9A\u3002"
+  fullDescriptionEn: Earth combines a nitrogen-oxygen atmosphere, a global magnetic
+    field and active plate tectonics that protect and shape life. Its moon stabilizes
+    axial tilt, keeping climate relatively stable over long timescales.
+  diameter: 12,756 km
+  rotationPeriod: "23 \u5C0F\u65F6 56 \u5206"
+  orbitalPeriod: "365.25 \u5929"
+  age: "\u7EA6 46 \u4EBF\u5E74"
+  characteristics: "\u6DB2\u6001\u6C34\u6D77\u6D0B\uFF1B\u5BCC\u6C27\u5927\u6C14\uFF1B\u5168\u7403\u78C1\u573A\uFF1B\u552F\u4E00\u786E\u8BA4\u5B58\u5728\u751F\u547D"
+  icon: {fileID: 0}
+  narration: {fileID: 0}

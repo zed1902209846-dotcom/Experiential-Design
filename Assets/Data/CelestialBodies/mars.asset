@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aac5222cf7d635e46be0e531654d9534, type: 3}
+  m_Name: mars
+  m_EditorClassIdentifier: Assembly-CSharp::SolarSystemAR.CelestialBodyData
+  id: mars
+  displayName: "\u706B\u661F"
+  englishName: Mars
+  shortDescription: "\u706B\u661F\u56E0\u8868\u9762\u6C27\u5316\u94C1\u5448\u7EA2\u8272\uFF0C\u62E5\u6709\u592A\u9633\u7CFB\u6700\u9AD8\u7684\u706B\u5C71\u4E0E\u6700\u957F\u7684\u5CE1\u8C37\uFF0C\u662F\u4EBA\u7C7B\u63A2\u7D22\u91CD\u70B9\u3002"
+  shortDescriptionEn: Mars looks red from iron oxide, hosts the tallest volcano and
+    longest canyon, and is a prime exploration target.
+  fullDescription: "\u706B\u661F\u62E5\u6709\u7A00\u8584\u7684\u4E8C\u6C27\u5316\u78B3\u5927\u6C14\u4E0E\u5B63\u8282\u6027\u6781\u51A0\u3002\u5965\u6797\u5E15\u65AF\u5C71\u9AD8\u7EA6
+    22 \u516C\u91CC\uFF0C\u6C34\u624B\u53F7\u5CE1\u8C37\u957F\u7EA6 4000 \u516C\u91CC\u3002\u5927\u91CF\u8BC1\u636E\u663E\u793A\u8FDC\u53E4\u706B\u661F\u66FE\u6709\u6DB2\u6001\u6C34\uFF0C\u591A\u4E2A\u63A2\u6D4B\u5668\u6B63\u5728\u6301\u7EED\u5BFB\u627E\u751F\u547D\u75D5\u8FF9\u3002"
+  fullDescriptionEn: Mars has a thin CO2 atmosphere and seasonal polar caps. Olympus
+    Mons rises about 22 km and Valles Marineris stretches about 4,000 km. Strong
+    evidence of ancient liquid water drives the ongoing search for life.
+  diameter: 6,792 km
+  rotationPeriod: "24 \u5C0F\u65F6 37 \u5206"
+  orbitalPeriod: "687 \u5929"
+  age: "\u7EA6 46 \u4EBF\u5E74"
+  characteristics: "\u6C27\u5316\u94C1\u7EA2\u8272\u8868\u9762\uFF1B\u5965\u6797\u5E15\u65AF\u706B\u5C71\uFF1B\u6C34\u624B\u53F7\u5CE1\u8C37\uFF1B\u5B58\u5728\u6C34\u51B0"
+  icon: {fileID: 0}
+  narration: {fileID: 0}

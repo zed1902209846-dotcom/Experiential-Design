@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aac5222cf7d635e46be0e531654d9534, type: 3}
+  m_Name: mercury
+  m_EditorClassIdentifier: Assembly-CSharp::SolarSystemAR.CelestialBodyData
+  id: mercury
+  displayName: "\u6C34\u661F"
+  englishName: Mercury
+  shortDescription: "\u6C34\u661F\u662F\u8DDD\u592A\u9633\u6700\u8FD1\u3001\u4F53\u79EF\u6700\u5C0F\u7684\u884C\u661F\uFF0C\u8868\u9762\u5E03\u6EE1\u9668\u77F3\u5751\uFF0C\u663C\u591C\u6E29\u5DEE\u8D85\u8FC7
+    600\xB0C\u3002"
+  shortDescriptionEn: "Mercury is the smallest planet closest to the Sun, crater-covered,
+    with day-night temperature swings over 600\xB0C."
+  fullDescription: "\u6C34\u661F\u51E0\u4E4E\u6CA1\u6709\u5927\u6C14\u5C42\uFF0C\u767D\u5929\u53EF\u8FBE
+    430\xB0C\uFF0C\u591C\u665A\u964D\u81F3 -180\xB0C\u3002\u5B83\u62E5\u6709\u5DE8\u5927\u7684\u94C1\u6838\uFF08\u7EA6\u5360\u534A\u5F84
+    85%\uFF09\u548C\u5FAE\u5F31\u7684\u78C1\u573A\uFF0C\u8868\u9762\u5916\u89C2\u7C7B\u4F3C\u6708\u7403\u3002\u7531\u4E8E\u8F68\u9053\u79BB\u5FC3\u7387\u5927\uFF0C\u4E00\u4E2A\u592A\u9633\u65E5\u957F\u8FBE
+    176 \u4E2A\u5730\u7403\u65E5\u3002"
+  fullDescriptionEn: "Mercury has almost no atmosphere; days reach 430\xB0C while
+    nights drop to -180\xB0C. A huge iron core (about 85% of its radius) and a weak
+    magnetic field define it. Its eccentric orbit makes one solar day last 176 Earth
+    days."
+  diameter: 4,879 km
+  rotationPeriod: "58.6 \u5929"
+  orbitalPeriod: "88 \u5929"
+  age: "\u7EA6 46 \u4EBF\u5E74"
+  characteristics: "\u65E0\u5927\u6C14\u5C42\uFF1B\u5DE8\u5927\u94C1\u6838\uFF1B\u6781\u7AEF\u663C\u591C\u6E29\u5DEE\uFF1B\u516C\u8F6C\u901F\u5EA6\u6700\u5FEB"
+  icon: {fileID: 0}
+  narration: {fileID: 0}

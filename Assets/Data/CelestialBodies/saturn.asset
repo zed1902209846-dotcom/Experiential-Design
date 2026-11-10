@@ -1,0 +1,32 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: aac5222cf7d635e46be0e531654d9534, type: 3}
+  m_Name: saturn
+  m_EditorClassIdentifier: Assembly-CSharp::SolarSystemAR.CelestialBodyData
+  id: saturn
+  displayName: "\u571F\u661F"
+  englishName: Saturn
+  shortDescription: "\u571F\u661F\u4EE5\u58EE\u89C2\u7684\u51B0\u8D28\u73AF\u7CFB\u95FB\u540D\uFF0C\u73AF\u76F4\u5F84\u7EA6
+    28 \u4E07\u516C\u91CC\uFF0C\u5E73\u5747\u539A\u5EA6\u5374\u4EC5\u7EA6 10 \u7C73\u3002"
+  shortDescriptionEn: Saturn is famous for its icy rings - about 280,000 km wide
+    yet only ~10 m thick on average.
+  fullDescription: "\u571F\u661F\u5E73\u5747\u5BC6\u5EA6\u4F4E\u4E8E\u6C34\uFF0C\u662F\u592A\u9633\u7CFB\u4E2D\u6700\u201C\u8F7B\u201D\u7684\u884C\u661F\u3002\u5176\u73AF\u7CFB\u7531\u65E0\u6570\u51B0\u7C92\u4E0E\u5CA9\u5C51\u7EC4\u6210\u3002\u6700\u5927\u7684\u536B\u661F\u571F\u536B\u516D\uFF08\u6CF0\u5766\uFF09\u62E5\u6709\u6D53\u5BC6\u5927\u6C14\u4E0E\u6DB2\u6001\u7532\u70F7\u6E56\u6CCA\uFF0C\u88AB\u89C6\u4E3A\u751F\u547D\u5019\u9009\u5730\u4E4B\u4E00\u3002"
+  fullDescriptionEn: Saturn's average density is lower than water - the least dense
+    planet. Its rings are countless ice grains and rock debris. Its largest moon
+    Titan has a thick atmosphere and methane lakes, a candidate for life.
+  diameter: 120,536 km
+  rotationPeriod: "10 \u5C0F\u65F6 42 \u5206"
+  orbitalPeriod: "29.4 \u5E74"
+  age: "\u7EA6 46 \u4EBF\u5E74"
+  characteristics: "\u51B0\u8D28\u73AF\u7CFB\uFF1B\u5E73\u5747\u5BC6\u5EA6\u5C0F\u4E8E\u6C34\uFF1B\u571F\u536B\u516D\u62E5\u6709\u7532\u70F7\u6E56\uFF1B\u6781\u5730\u516D\u8FB9\u5F62\u98CE\u66B4"
+  icon: {fileID: 0}
+  narration: {fileID: 0}
