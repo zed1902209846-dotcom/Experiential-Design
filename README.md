@@ -41,5 +41,5 @@ Assets/
 - 二进制大文件（`*.psd`、`*.tgz`、`*.fbx` 等）走 **Git LFS**，克隆前先 `git lfs install`。
 - `Library/`、`Build/`、`obj/`、`Logs/` 等生成物已在 `.gitignore` 中排除；首次打开会重建。
 - `Assets/Resources/VuforiaConfiguration.asset` 内含 Vuforia License Key（客户端可见），公开仓库会泄露配额，建议保持仓库 **私有**。
-- 开发时可用 [MCP for Unity](https://github.com/CoplayDev/unity-mcp) 让 AI 直接操作编辑器（可选，不影响构建）。
+- 开发时可用 [MCP for Unity](https://github.com/CoplayDev/unity-mcp) 让 AI 直接操作编辑器：`Packages/manifest.json` 中已指向官方 git URL（可选包，不影响构建；不需要可在 Package Manager 里移除）。
 
