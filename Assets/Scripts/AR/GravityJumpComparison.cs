@@ -27,7 +27,9 @@ namespace SolarSystemAR
         private Button jump, selectA, selectB, same, cycleA, cycleB;
         private readonly GravityGuessRound round = new GravityGuessRound();
         private Font font;
-        private float jumpStart;
+        // 累计时钟而非起跳时间戳：切到后台或卡顿一帧不会让动画直接跳到结果。
+        private float jumpClock;
+        private const float MaxFrameStep = .1f;
         private const float PlaybackRate = .45f;
         private readonly Color cyan = new Color(.3f,.9f,1f);
         private readonly Color gold = new Color(1f,.8f,.25f);
@@ -114,7 +116,7 @@ namespace SolarSystemAR
         {
             if (first == null || second == null || figureA == null || figureB == null ||
                 !figureA.Ready || !figureB.Ready || !round.Begin()) return;
-            jumpStart = Time.unscaledTime;
+            jumpClock = 0;
             UpdateCopy();
         }
 
@@ -128,7 +130,8 @@ namespace SolarSystemAR
             float radiusB=figureB.SurfaceBounds.extents.magnitude/Mathf.Sqrt(3);
             float size=Mathf.Min(radiusA,radiusB);
             float worldPerMeter=size*.85f/Mathf.Max(PlanetGravity.Peak(first.gravity),PlanetGravity.Peak(second.gravity));
-            float elapsed=IsJumping?(Time.unscaledTime-jumpStart)*PlaybackRate:0;
+            if(IsJumping) jumpClock+=Mathf.Min(Time.unscaledDeltaTime,MaxFrameStep);
+            float elapsed=IsJumping?jumpClock*PlaybackRate:0;
             float end=Mathf.Max(PlanetGravity.FlightTime(first.gravity),PlanetGravity.FlightTime(second.gravity));
             if (IsJumping && elapsed >= end)
             {

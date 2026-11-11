@@ -1,0 +1,21 @@
+{
+    "name": "SolarSystemAR.Editor",
+    "references": [
+        "SolarSystemAR",
+        "Unity.InputSystem",
+        "UnityEngine.UI",
+        "VuforiaScripts"
+    ],
+    "rootNamespace": "SolarSystemAR",
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

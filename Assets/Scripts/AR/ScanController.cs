@@ -11,9 +11,13 @@ namespace SolarSystemAR
         private PlanetAnnotations annotations;
         private GravityJumpComparison gravityLab;
         private readonly Dictionary<string, ScanPlanetContent> trackedContents = new Dictionary<string, ScanPlanetContent>();
+        private int previousSleepTimeout;
 
         private void Awake()
         {
+            // 展馆里访客常常只举着手机看而不触屏：扫描期间保持屏幕常亮，离开场景时恢复。
+            previousSleepTimeout = Screen.sleepTimeout;
+            Screen.sleepTimeout = SleepTimeout.NeverSleep;
             if (GetComponent<ARSceneLighting>() == null) gameObject.AddComponent<ARSceneLighting>();
             annotations = GetComponent<PlanetAnnotations>();
             if (annotations == null) annotations = gameObject.AddComponent<PlanetAnnotations>();
@@ -66,6 +70,11 @@ namespace SolarSystemAR
         public void GoBack()
         {
             SceneNavigator.GoTo(SceneNavigator.MainMenu);
+        }
+
+        private void OnDestroy()
+        {
+            Screen.sleepTimeout = previousSleepTimeout;
         }
 
         private ScanPlanetContent FindContent(string display)

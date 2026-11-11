@@ -96,9 +96,11 @@ Switch the active platform to Android in Unity's Build Profiles and confirm that
 Solar System > Setup > Step6 Build Android APK
 ```
 
-The build includes 12 app scenes: `MainMenuScene`, `ScanScene`, and the Earth, Venus, Mercury, Mars, Jupiter, Saturn, Uranus, Neptune, Sun, and Solar System detail scenes. The Earth scene's existing filename is `Eearth.unity`.
+The build includes two scenes: `MainMenuScene` and `ScanScene`. The shared `ScanScene` handles every card and the multi-card activities.
 
-The shared `ScanScene` is intended for multi-card activities. Individual planet scenes are configured for their corresponding cards rather than multi-card exploration.
+The individual planet scenes in `Assets/Scenes/App` (Earth, Venus, Mercury, Mars, Jupiter, Saturn, Uranus, Neptune, Sun, and Solar System; the Earth scene's filename is `Eearth.unity`) are kept in the project but are not part of the build, because no screen in the app navigates to them. Add them back in Build Profiles together with a menu entry if they are needed.
+
+`ScanScene` keeps the screen awake while it is open and restores the device's sleep setting when the visitor leaves it.
 
 ## Project layout
 
@@ -110,6 +112,7 @@ Assets/
   Scripts/Data/        Planet descriptions, statistics, and gravity data
   Scripts/UI/          Home screen and other UI controllers
   Scripts/Editor/      Scene generation, repair, and Android build tools
+  Tests/EditMode/      EditMode tests for the gameplay and layout logic
   Data/                Celestial-body ScriptableObject assets
   UI/                  Home artwork and UI textures
   Resources/           Runtime panel atlas, figure material, and Vuforia configuration
@@ -132,7 +135,9 @@ Main interaction entry points:
 
 ## Validation and limitations
 
-Editor checks cover prediction outcomes, ties, replay, tracking-loss resets, pair selection, stable anchors during rotation, panel avoidance, and home-screen navigation. Final museum deployment still requires device testing for camera tracking, printed-card quality, touch usability, screen sizes, and performance under exhibition lighting.
+EditMode tests in `Assets/Tests/EditMode` cover the gravity values and jump equations, the guess/jump/reveal state machine (including ties and replay), target-name lookup, and panel and label placement. Run them from **Window > General > Test Runner > EditMode**.
+
+Tracking-loss resets, pair selection, stable anchors during rotation, and home-screen navigation are not covered by automated tests. Final museum deployment still requires device testing for camera tracking, printed-card quality, touch usability, screen sizes, and performance under exhibition lighting.
 
 ## Repository notes
 
