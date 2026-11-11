@@ -44,3 +44,6 @@ UpgradeLog.htm
 # ---------- local Unity build backups / symbols ----------
 *_BurstDebugInformation_DoNotShip/
 *_BackUpThisFolder_ButDontShipItWithYourGame/
+
+# ---------- Vuforia editor runtime cache (machine-local) ----------
+/QCAR/
