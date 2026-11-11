@@ -1,25 +1,25 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace SolarSystemAR
 {
-    /// 扫描场景总控（方案 B）：
-    /// 1) 识别成功 → 对应行星 3D 模型出现在实体卡片上自转，右下角浮现太阳系图标按钮；
-    /// 2) 点图标按钮 → 弹出该行星知识卡；点 X 关闭后回到 AR 画面；
-    /// 3) 识别丢失 → 模型隐藏，图标按钮保持可用（可继续浏览知识卡）。
+    /// 多卡片扫描：每个目标独立显示模型、名称和点击介绍。
     public class ScanController : MonoBehaviour
     {
-        [SerializeField] private PlanetCardController card;
         [SerializeField] private ARScanUIController scanUI;
-        [SerializeField] private GameObject browseButton; // 图标按钮：识别成功后出现，点开当前行星知识卡
-
         private ScanPlanetContent[] contents;
-        private ScanPlanetContent current;
-        private string currentId;
+        private PlanetAnnotations annotations;
+        private GravityJumpComparison gravityLab;
+        private readonly Dictionary<string, ScanPlanetContent> trackedContents = new Dictionary<string, ScanPlanetContent>();
 
         private void Awake()
         {
+            if (GetComponent<ARSceneLighting>() == null) gameObject.AddComponent<ARSceneLighting>();
+            annotations = GetComponent<PlanetAnnotations>();
+            if (annotations == null) annotations = gameObject.AddComponent<PlanetAnnotations>();
+            gravityLab = GetComponent<GravityJumpComparison>();
+            if (gravityLab == null) gravityLab = gameObject.AddComponent<GravityJumpComparison>();
             contents = FindObjectsByType<ScanPlanetContent>(FindObjectsInactive.Include, FindObjectsSortMode.None);
-            if (browseButton != null) browseButton.SetActive(false);
         }
 
         public void OnTrackingFound(string targetName)
@@ -30,30 +30,37 @@ namespace SolarSystemAR
                 Debug.LogWarning("ScanController: 未识别的目标 " + targetName);
                 return;
             }
-            currentId = info.id;
-            if (current != null) current.Hide();
-            current = FindContent(info.display);
-            if (current != null) current.Show();
-            if (browseButton != null) browseButton.SetActive(true);
+            var content = FindContent(info.display);
+            if (content == null) return;
+            trackedContents[info.id] = content;
+            content.Show();
+            if (content.Model != null) annotations.Track(content, info);
             if (scanUI != null) scanUI.OnTrackingFound();
+            gravityLab.Sync(trackedContents);
         }
 
+        public void OnTrackingLost(string targetName)
+        {
+            var info = PlanetData.Find(targetName);
+            if (info == null || !trackedContents.TryGetValue(info.id, out var content)) return;
+            annotations.Untrack(content);
+            if (content != null) content.Hide();
+            trackedContents.Remove(info.id);
+            gravityLab.Sync(trackedContents);
+            if (trackedContents.Count == 0 && scanUI != null) scanUI.OnTrackingLost();
+        }
+
+        /// 手动重置；单张卡丢失使用带目标名的重载。
         public void OnTrackingLost()
         {
-            if (current != null)
+            foreach (var content in trackedContents.Values)
             {
-                current.Hide();
-                current = null;
+                annotations.Untrack(content);
+                if (content != null) content.Hide();
             }
+            trackedContents.Clear();
+            gravityLab.Sync(trackedContents);
             if (scanUI != null) scanUI.OnTrackingLost();
-            // 知识卡若已打开则保持，方便阅读；X 手动关闭
-        }
-
-        /// 右下角图标按钮：打开当前识别行星的知识卡；未识别到时默认地球。
-        public void OpenBrowser()
-        {
-            if (card == null) return;
-            card.ShowPlanet(string.IsNullOrEmpty(currentId) ? "earth" : currentId);
         }
 
         public void GoBack()
@@ -64,10 +71,8 @@ namespace SolarSystemAR
         private ScanPlanetContent FindContent(string display)
         {
             if (contents == null) return null;
-            foreach (var c in contents)
-            {
-                if (c != null && c.name.StartsWith(display)) return c;
-            }
+            foreach (var content in contents)
+                if (content != null && content.name.StartsWith(display)) return content;
             return null;
         }
     }

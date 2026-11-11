@@ -9,12 +9,14 @@ namespace SolarSystemAR.EditorTools
     /// 前置：AndroidPlayer 模块（SDK/NDK/OpenJDK）已安装。
     public static class Step6ApkBuilder
     {
-        const string OutPath = @"D:\workbody\生成文件\2026-09-24-11-31-39\apk_build.txt";
-        const string ApkPath = @"D:\Trae生成文件\666\ARSolarSystem.apk";
+        static readonly string BuildDirectory = Path.GetFullPath("Builds/Android");
+        static readonly string OutPath = Path.Combine(BuildDirectory, "apk_build.txt");
+        static readonly string ApkPath = Path.Combine(BuildDirectory, "ARSolarSystem.apk");
 
         [MenuItem("Solar System/Setup/Step6 Build Android APK %#j")]
         public static void Run()
         {
+            Directory.CreateDirectory(BuildDirectory);
             var log = new System.Text.StringBuilder();
             try { Build(log); }
             catch (System.Exception e) { log.AppendLine("EXCEPTION: " + e); }
@@ -35,7 +37,10 @@ namespace SolarSystemAR.EditorTools
             }
 
             // 1. 场景列表
-            var scenePaths = new[] { "Assets/Scenes/App/LoginScene.unity", "Assets/Scenes/App/MainMenuScene.unity", "Assets/Scenes/App/ScanScene.unity" };
+            const string mainMenu = "Assets/Scenes/App/MainMenuScene.unity";
+            var scenePaths = new[] { mainMenu }.Concat(EditorBuildSettings.scenes
+                .Where(s => s.enabled && s.path != mainMenu && s.path != "Assets/Scenes/App/LoginScene.unity")
+                .Select(s => s.path)).Distinct().ToArray();
             foreach (var s in scenePaths)
                 if (!File.Exists(s)) { log.AppendLine("FATAL: scene missing " + s); return; }
             EditorBuildSettings.scenes = scenePaths.Select(s => new EditorBuildSettingsScene(s, true)).ToArray();

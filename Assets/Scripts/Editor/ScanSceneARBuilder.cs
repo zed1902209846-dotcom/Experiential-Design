@@ -46,7 +46,7 @@ namespace SolarSystemAR.EditorTools
             new PlanetDef("JupiterTarget_V", "jupiter", CardW, CardW * 1.1146953f, "Jupiter.prefab",     "JupiterCard.jpg", "JupiterContent"),
             new PlanetDef("MarsTarget_V",    "mars",    CardW, CardW * 1.0070423f, "Mars.prefab",        "MarsCard.jpg",    "MarsContent"),
             new PlanetDef("MercuryTarget_V", "mercury", CardW, CardW * 1.0404414f, "Mercury.prefab",     "MercuryCard.jpg", "MercuryContent"),
-            new PlanetDef("SaturnTarget_V",  "saturn",  CardW, CardW * 1.077966f,  "SaturnAlone.prefab", "SaturnCard.jpg",  "SaturnContent"),
+            new PlanetDef("SaturnTarget_V",  "saturn",  CardW, CardW * 1.077966f,  "Assets/Prefabs/SaturnWithRings.prefab", "SaturnCard.jpg",  "SaturnContent"),
             new PlanetDef("UranusTarget_V",  "uranus",  CardW, CardW * 1.0915253f, "Uranus.prefab",      "UranusCard.jpg",  "UranusContent"),
             new PlanetDef("NeptuneTarget_V", "neptune", CardW, CardW * 1.089041f,  "Neptune.prefab",     "NeptuneCard.jpg", "NeptuneContent"),
             new PlanetDef("SunTarget_V",         "sun",         CardW, CardW * 1.1038064f, "Sun.prefab",         "SunCard.jpg",         "SunContent"),
@@ -130,8 +130,6 @@ namespace SolarSystemAR.EditorTools
             }
 
             // 5. 无需绑定列表：ScanController.Awake() 会自行 FindObjectsByType<ScanPlanetContent> 发现内容
-            // 5b. 知识卡左侧 3D 预览的 prefab 列表：补齐 sun / solarsystem
-            EnsurePreviewPrefabs();
 
             // 6. 保存
             EditorSceneManager.MarkSceneDirty(scene);
@@ -164,13 +162,14 @@ namespace SolarSystemAR.EditorTools
                 float sunSize = MaxDim(sun);
                 if (sunSize <= 0.0001f) sunSize = 1f;
 
-                string[] names = { "Mercury", "Venus", "Earth", "Mars", "Jupiter", "SaturnAlone", "Uranus", "Neptune" };
+                string[] names = { "Mercury", "Venus", "Earth", "Mars", "Jupiter", "Saturn", "Uranus", "Neptune" };
                 float[] orbit  = { 0.70f, 0.95f, 1.20f, 1.45f, 1.75f, 2.00f, 2.15f, 2.25f };
                 float[] size   = { 0.14f, 0.18f, 0.20f, 0.16f, 0.26f, 0.22f, 0.18f, 0.17f };
 
                 for (int i = 0; i < names.Length; i++)
                 {
-                    var pf = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabRoot + names[i] + ".prefab");
+                    var pf = AssetDatabase.LoadAssetAtPath<GameObject>(names[i] == "Saturn"
+                        ? "Assets/Prefabs/SaturnWithRings.prefab" : PrefabRoot + names[i] + ".prefab");
                     if (pf == null) { Log.AppendLine("  solar system: missing " + names[i] + ".prefab"); continue; }
 
                     var inst = (GameObject)PrefabUtility.InstantiatePrefab(pf);
@@ -204,41 +203,6 @@ namespace SolarSystemAR.EditorTools
         }
 
         /// 知识卡左侧 3D 预览按 prefab 名匹配 planetId，所以只需把缺的补齐即可（顺序无关）
-        static void EnsurePreviewPrefabs()
-        {
-            var rig = Object.FindFirstObjectByType<SolarSystemAR.PlanetPreviewRig>(FindObjectsInactive.Include);
-            if (rig == null) { Log.AppendLine("preview rig: NOT FOUND"); return; }
-
-            var so = new SerializedObject(rig);
-            var arr = so.FindProperty("planetPrefabs");
-            if (arr == null || !arr.isArray) { Log.AppendLine("preview rig: planetPrefabs not found"); return; }
-
-            var have = new HashSet<string>();
-            for (int i = 0; i < arr.arraySize; i++)
-            {
-                var o = arr.GetArrayElementAtIndex(i).objectReferenceValue as GameObject;
-                if (o != null) have.Add(o.name.ToLower());
-            }
-
-            var add = new List<GameObject>();
-            foreach (var d in Defs)
-            {
-                string key = Path.GetFileNameWithoutExtension(d.prefab).ToLower();
-                if (have.Contains(key)) continue;
-                var p = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabRoot + d.prefab);
-                if (p != null) { add.Add(p); have.Add(key); }
-            }
-
-            if (add.Count == 0) { Log.AppendLine("preview rig prefabs: OK (unchanged)"); return; }
-
-            int n = arr.arraySize;
-            arr.arraySize = n + add.Count;
-            for (int i = 0; i < add.Count; i++)
-                arr.GetArrayElementAtIndex(n + i).objectReferenceValue = add[i];
-            so.ApplyModifiedPropertiesWithoutUndo();
-            Log.AppendLine("preview rig prefabs: +" + add.Count + " -> " + (n + add.Count));
-        }
-
         static GameObject BuildTarget(PlanetDef d)
         {
             var existing = GameObject.Find(d.go);
@@ -293,22 +257,29 @@ namespace SolarSystemAR.EditorTools
             var existingGo = GameObject.Find(d.content);
             if (existingGo != null) content = existingGo.GetComponent<ScanPlanetContent>();
 
-            if (content == null)
+            bool created = content == null;
+            if (created)
             {
                 // 新建：挂 ScanPlanetContent 并指向行星 prefab
                 var newGo = new GameObject(d.content);
                 Undo.RegisterCreatedObjectUndo(newGo, "CreateContent " + d.content);
                 content = newGo.AddComponent<ScanPlanetContent>();
-                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabRoot + d.prefab);
-                if (prefab == null) { Log.AppendLine("  prefab missing: " + d.prefab); return content; }
-                var cso = new SerializedObject(content);
-                var pp = cso.FindProperty("planetPrefab");
-                if (pp != null && pp.propertyType == SerializedPropertyType.ObjectReference)
-                    pp.objectReferenceValue = prefab;
+            }
+
+            // 同时修复已存在内容的引用，避免旧的无环土星被保留下来。
+            string prefabPath = d.prefab.StartsWith("Assets/") ? d.prefab : PrefabRoot + d.prefab;
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
+            if (prefab == null) { Log.AppendLine("  prefab missing: " + prefabPath); return content; }
+            var cso = new SerializedObject(content);
+            var pp = cso.FindProperty("planetPrefab");
+            if (pp != null && pp.propertyType == SerializedPropertyType.ObjectReference)
+                pp.objectReferenceValue = prefab;
+            if (created)
+            {
                 SetFloat(cso, "modelDiameter", d.dia);
                 SetFloat(cso, "rotationSpeed", 20f);
-                cso.ApplyModifiedPropertiesWithoutUndo();
             }
+            cso.ApplyModifiedPropertiesWithoutUndo();
 
             if (content.transform.parent != parent)
                 Undo.SetTransformParent(content.transform, parent, "MoveContent " + d.content);

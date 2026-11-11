@@ -5,7 +5,6 @@ namespace SolarSystemAR
 {
     public static class SceneNavigator
     {
-        public const string Login = "LoginScene";
         public const string MainMenu = "MainMenuScene";
         public const string AR = "ARScene";
         public const string Single = "SinglePlanetScene";

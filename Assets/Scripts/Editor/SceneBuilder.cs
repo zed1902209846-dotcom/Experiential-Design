@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using SolarSystemAR;
 using UnityEditor;
 using UnityEditor.Events;
@@ -11,10 +12,10 @@ using UnityEngine.UI;
 
 namespace SolarSystemAR.EditorBuildScripts
 {
-    /// v6：一键生成 LoginScene（太空登录）/ MainMenuScene（Start Exploration）/ ScanScene（HUD + 8 行星知识卡）。
+    /// 一键生成免登录 MainMenuScene 和 ScanScene（HUD + 行星知识卡）。
     /// 菜单：Solar System > Setup > Build All UI Scenes
     /// ScanScene 为幂等更新：只重建 UI 层（Canvas/ScanRoot/EventSystem/PreviewRig），不动任何 Vuforia 物体（ARCamera、*Target_V）。
-    /// 知识卡左侧 3D 模型走 RenderTexture（PlanetPreviewRig），右侧四段英文文案来自 PlanetData。
+    /// 英文名称与侧边介绍由运行时 PlanetAnnotations 跟随模型生成。
     public static class SceneBuilder
     {
         // ---- 色板 ----
@@ -29,8 +30,7 @@ namespace SolarSystemAR.EditorBuildScripts
         static readonly Color InputBg = new Color(1f, 1f, 1f, 0.08f);
 
         const string Dir = "Assets/Scenes/App";
-        const string SplashPath = "Assets/UI/Splash.jpg";
-        const string StartButtonPath = "Assets/UI/StartButton.jpg";
+        const string SplashPath = "Assets/UI/HomeArtwork.png";
         const string BrowseIconPath = "Assets/UI/BrowseIcon.png";  // 太阳系图标按钮
         const string PrefabDir = "Assets/Inguz Media Studio/The Amazing Solar System/Prefabs";
 
@@ -38,12 +38,11 @@ namespace SolarSystemAR.EditorBuildScripts
         public static void BuildAll()
         {
             if (!Directory.Exists(Dir)) Directory.CreateDirectory(Dir);
-            BuildLogin();
             BuildMainMenu();
             BuildScanUI();
             AddToBuildSettings();
             AssetDatabase.SaveAssets();
-            Debug.Log("SceneBuilder v6: Login / MainMenu / Scan 三场景完成，已加入 Build Settings。");
+            Debug.Log("SceneBuilder: MainMenu / Scan 场景完成，已加入 Build Settings。");
         }
 
         [MenuItem("Solar System/Setup/Build Scan Scene UI Only")]
@@ -90,78 +89,6 @@ namespace SolarSystemAR.EditorBuildScripts
             Debug.Log($"RebindVuforiaTargets 完成，重绑 {rebound} 个目标。");
         }
 
-        // ============================================================ Login
-        static void BuildLogin()
-        {
-            var canvas = SetupScene("LoginScene");
-            var root = canvas.transform;
-            Splash(root);
-
-            var card = Box("Card", root, 0, -180, 880, 980);
-            Img(card, CardBg);
-
-            var h = Box("Header", card.transform, 0, 380, 880, 90);
-            Txt(h, "Login", 56, TextMain);
-
-            InputField email, pass;
-            Input("EmailInput", card.transform, "Email", false, 0, 180, 720, 100, out email);
-            Input("PasswordInput", card.transform, "Password", true, 0, 40, 720, 100, out pass);
-
-            var msg = Box("Message", card.transform, 0, -70, 760, 44);
-            Txt(msg, "", 26, TextSub);
-
-            Button bLogin, bRegister;
-            Btn("LoginButton", card.transform, "LOGIN", Cyan, CyanDark, 40, 0, -200, 720, 120, out bLogin);
-            Btn("RegisterButton", card.transform, "REGISTER", Purple, PurpleDark, 40, 0, -360, 720, 120, out bRegister);
-
-            // ---- 注册面板 ----
-            var reg = NewUI("RegisterPanel", root);
-            FullStretch(reg);
-            Img(reg, Dim);
-            reg.SetActive(false);
-
-            var rCard = Box("Card", reg.transform, 0, 0, 880, 1050);
-            Img(rCard, CardBg);
-            var rH = Box("Header", rCard.transform, 0, 430, 880, 80);
-            Txt(rH, "Register", 48, TextMain);
-
-            InputField rEmail, rPass, rConfirm;
-            Input("EmailInput", rCard.transform, "Email", false, 0, 250, 720, 100, out rEmail);
-            Input("PasswordInput", rCard.transform, "Password (min 6 chars)", true, 0, 110, 720, 100, out rPass);
-            Input("ConfirmInput", rCard.transform, "Confirm Password", true, 0, -30, 720, 100, out rConfirm);
-
-            var rMsg = Box("Message", rCard.transform, 0, -160, 760, 44);
-            Txt(rMsg, "", 26, TextSub);
-
-            Button rSubmit, rBack;
-            Btn("SubmitButton", rCard.transform, "SIGN UP", Purple, PurpleDark, 38, 0, -300, 720, 120, out rSubmit);
-            Btn("BackButton", rCard.transform, "BACK", InputBg, Color.clear, 34, 0, -450, 720, 100, out rBack);
-
-            var loginGo = NewUI("LoginRoot", root);
-            var loginCtrl = loginGo.AddComponent<LoginController>();
-            Wire(loginCtrl, f =>
-            {
-                f("usernameInput", email);
-                f("passwordInput", pass);
-                f("messageText", msg.GetComponent<Text>());
-                f("registerPanel", reg);
-            });
-            var regCtrl = reg.AddComponent<RegisterController>();
-            Wire(regCtrl, f =>
-            {
-                f("usernameInput", rEmail);
-                f("passwordInput", rPass);
-                f("confirmInput", rConfirm);
-                f("messageText", rMsg.GetComponent<Text>());
-            });
-            AddClick(bLogin, loginCtrl.Login);
-            AddClick(bRegister, loginCtrl.OpenRegister);
-            AddClick(rSubmit, regCtrl.Submit);
-            AddClick(rBack, regCtrl.Close);
-
-            Save("LoginScene");
-        }
-
         // ============================================================ MainMenu
         static void BuildMainMenu()
         {
@@ -169,50 +96,20 @@ namespace SolarSystemAR.EditorBuildScripts
             var root = canvas.transform;
             Splash(root);
 
-            // 胶囊按钮（用设计图切片）
-            var startGo = Box("StartButton", root, 0, -560, 760, 230);
-            var startImg = startGo.AddComponent<Image>();
-            var sp = LoadSprite(StartButtonPath);
-            if (sp != null) { startImg.sprite = sp; startImg.preserveAspect = true; }
-            else startImg.color = Cyan;
+            var startGo = Box("StartButton", root, 0, 0, 168, 168);
+            var icon = startGo.AddComponent<ScanEntryIcon>();
             var startBtn = startGo.AddComponent<Button>();
-            var c = startBtn.colors;
-            c.highlightedColor = new Color(1.15f, 1.15f, 1.15f);
-            c.pressedColor = new Color(0.85f, 0.85f, 0.85f);
-            c.fadeDuration = 0.06f;
-            startBtn.colors = c;
-
-            Button bLogout;
-            Btn("LogoutButton", root, "LOG OUT", InputBg, Color.clear, 28, 400, 880, 240, 80, out bLogout);
-
-            // 9 个星球直达入口（3x3）：地球走合一扫描场景，其余各自独立场景
-            string[,] entries =
-            {
-                { "EARTH",        "ScanScene" },
-                { "MERCURY",      "MercuryScene" },
-                { "MARS",         "MarsScene" },
-                { "JUPITER",      "JupiterScene" },
-                { "SATURN",       "SaturnScene" },
-                { "URANUS",       "UranusScene" },
-                { "NEPTUNE",      "NeptuneScene" },
-                { "SUN",          "SunScene" },
-                { "SOLAR SYSTEM", "SolarSystemScene" },
-            };
-            for (int i = 0; i < entries.GetLength(0); i++)
-            {
-                float x = -340 + (i % 3) * 340;
-                float y = 300 - (i / 3) * 140;
-                Button bPlanet;
-                Btn("PlanetButton_" + i, root, entries[i, 0], InputBg, CyanDark, 26, x, y, 300, 110, out bPlanet);
-                var launcher = bPlanet.gameObject.AddComponent<PlanetSceneLauncher>();
-                Wire(launcher, f => f("sceneName", entries[i, 1]));
-                AddClick(bPlanet, launcher.Open);
-            }
-
+            startBtn.targetGraphic = icon;
+            var colors = startBtn.colors;
+            colors.highlightedColor = Color.white;
+            colors.pressedColor = new Color(.65f,.8f,.9f);
+            colors.fadeDuration = .1f;
+            startBtn.colors = colors;
             var menuGo = NewUI("MainMenuRoot", root);
             var menuCtrl = menuGo.AddComponent<MainMenuController>();
             AddClick(startBtn, menuCtrl.StartExploration);
-            AddClick(bLogout, menuCtrl.Logout);
+            menuGo.AddComponent<MainMenuPresentation>().Configure(root.Find("Background").GetComponent<Image>(),startBtn);
+            Camera.main.backgroundColor = new Color(0,.025f,.065f);
 
             Save("MainMenuScene");
         }
@@ -259,7 +156,7 @@ namespace SolarSystemAR.EditorBuildScripts
 
             // ---- 扫描 HUD ----
             var banner = Box("Banner", root, 0, 860, 1080, 80);
-            Txt(banner, "PLEASE SCAN THE PLANET CARD", 40, Cyan);
+            Txt(banner, "SCAN PLANET CARDS", 40, Cyan);
 
             Button bBack;
             Btn("BackButton", root, "< BACK", InputBg, Color.clear, 32, -420, 880, 240, 96, out bBack);
@@ -278,153 +175,18 @@ namespace SolarSystemAR.EditorBuildScripts
             Txt(status, "SCANNING...", 40, Cyan);
 
             var hint = Box("Hint", root, 0, -700, 1080, 50);
-            Txt(hint, "TARGET: Planet Card", 30, TextSub);
+            Txt(hint, "Tap a planet to learn more", 30, TextSub);
 
-            // ---- 右下角悬浮浏览按钮（太阳系图标，识别成功后才显示）----
-            var browseGo = Box("BrowseButton", root, 420, -800, 180, 180);
-            var browseImg = browseGo.AddComponent<Image>();
-            var browseSp = LoadSprite(BrowseIconPath);
-            if (browseSp != null) { browseImg.sprite = browseSp; browseImg.preserveAspect = true; }
-            else browseImg.color = Purple;
-            var bBrowse = browseGo.AddComponent<Button>();
-            var bbc = bBrowse.colors;
-            bbc.highlightedColor = new Color(1.15f, 1.15f, 1.15f);
-            bbc.pressedColor = new Color(0.85f, 0.85f, 0.85f);
-            bbc.fadeDuration = 0.06f;
-            bBrowse.colors = bbc;
-
-            // ---- 3D 预览 Rig（藏在 y=-1000，RenderTexture 供卡片使用）----
-            var rigGo = new GameObject("PreviewRig");
-            rigGo.transform.position = new Vector3(0, -1000, 0);
-            var spawnGo = new GameObject("SpawnPoint");
-            spawnGo.transform.SetParent(rigGo.transform, false);
-            spawnGo.layer = 8; // 专用预览层（未命名层，主相机永远不会看到这里）
-            var camGo2 = new GameObject("PreviewCamera");
-            camGo2.transform.SetParent(rigGo.transform, false);
-            camGo2.transform.localPosition = new Vector3(0, 0.3f, -4f);
-            camGo2.transform.LookAt(spawnGo.transform);
-            var pCam = camGo2.AddComponent<Camera>();
-            pCam.clearFlags = CameraClearFlags.SolidColor;
-            pCam.backgroundColor = new Color(0, 0, 0, 0);
-            pCam.cullingMask = 1 << 8;
-            pCam.fieldOfView = 30f;
-            var lightGo = new GameObject("PreviewLight");
-            lightGo.transform.SetParent(rigGo.transform, false);
-            lightGo.transform.localPosition = new Vector3(2, 2, -2);
-            var pl = lightGo.AddComponent<Light>();
-            pl.type = LightType.Point;
-            pl.intensity = 2f;
-            pl.range = 20f;
-            var rig = rigGo.AddComponent<PlanetPreviewRig>();
-
-            // ---- 知识卡面板 ----
-            var panelGo = NewUI("PlanetCardPanel", root);
-            FullStretch(panelGo);
-            Img(panelGo, Dim);
-
-            var cardBox = Box("Card", panelGo.transform, 0, 0, 1020, 1760);
-            Img(cardBox, CardBg);
-
-            var title = Box("Title", cardBox.transform, -60, 800, 760, 80);
-            Txt(title, "Earth", 60, TextMain);
-            var tagline = Box("Tagline", cardBox.transform, -60, 726, 760, 50);
-            Txt(tagline, "Our Only Home", 32, Cyan);
-
-            Button bClose;
-            Btn("CloseButton", cardBox.transform, "X", InputBg, Color.clear, 36, 442, 800, 90, 90, out bClose);
-
-            // Tabs：2 行 x 4
-            var tabs = new List<Button>();
-            for (int i = 0; i < 8; i++)
-            {
-                float x = -375 + (i % 4) * 250;
-                float y = (i < 4) ? 655 : 572;
-                Button tb;
-                Btn("Tab_" + i, cardBox.transform, "Tab", InputBg, Color.clear, 26, x, y, 230, 84, out tb);
-                tabs.Add(tb);
-            }
-
-            // 左：3D 动态预览（RawImage + RenderTexture）
-            var previewGo = Box("Preview", cardBox.transform, -240, 310, 470, 400);
-            var raw = previewGo.AddComponent<RawImage>();
-            raw.color = Color.white;
-
-            // 右：KEY FACTS 统计表（标签左对齐 / 数值右对齐，与参考图一致）
-            var factsHead = Box("FactsHead", cardBox.transform, 245, 485, 430, 40);
-            Txt(factsHead, "KEY FACTS", 28, Cyan, TextAnchor.MiddleLeft);
-
-            var statLabels = new List<Text>();
-            var statValues = new List<Text>();
-            string[] statNames = { "ORDER FROM SUN", "DIAMETER", "DISTANCE FROM SUN", "ORBITAL PERIOD", "ROTATION PERIOD", "MOONS" };
-            for (int i = 0; i < statNames.Length; i++)
-            {
-                float y = 445 - i * 58;
-
-                var lbGo = Box("StatLabel_" + i, cardBox.transform, 35, y, 250, 46);
-                ((RectTransform)lbGo.transform).pivot = new Vector2(0, 0.5f);
-                statLabels.Add(Txt(lbGo, statNames[i], 22, TextSub, TextAnchor.MiddleLeft));
-
-                var vlGo = Box("StatValue_" + i, cardBox.transform, 470, y, 230, 46);
-                ((RectTransform)vlGo.transform).pivot = new Vector2(1, 0.5f);
-                var tv = Txt(vlGo, "-", 24, TextMain, TextAnchor.MiddleRight);
-                tv.fontStyle = FontStyle.Bold;
-                statValues.Add(tv);
-            }
-
-            // 下方四段说明文本
-            Text tWhat = Section(cardBox.transform, "WhatSection", "1. WHAT IS IT?", -70);
-            Text tSpecial = Section(cardBox.transform, "SpecialSection", "2. HOW SPECIAL?", -290);
-            Text tLife = Section(cardBox.transform, "LifeSection", "3. LIFE", -510);
-            Text tFun = Section(cardBox.transform, "FunSection", "4. FUN FACT", -730);
-
-            // ---- 控制器与绑定 ----
             var scanRoot = NewUI("ScanRoot", root);
             var scanCtrl = scanRoot.AddComponent<ScanController>();
-            var cardCtrl = scanRoot.AddComponent<PlanetCardController>();
             var scanUI = scanRoot.AddComponent<ARScanUIController>();
-
-            // 绑 prefab 列表
-            var prefabs = new List<Object>();
-            foreach (var info in PlanetData.All)
-            {
-                var p = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabDir + "/" + info.display + ".prefab");
-                if (p != null) prefabs.Add(p);
-            }
-            Wire(rig, f =>
-            {
-                f("previewCamera", pCam);
-                f("spawnPoint", spawnGo.transform);
-                f("planetPrefabs", prefabs.ToArray());
-            });
-            Wire(cardCtrl, f =>
-            {
-                f("panel", panelGo);
-                f("previewRig", rig);
-                f("previewImage", raw);
-                f("titleText", title.GetComponent<Text>());
-                f("taglineText", tagline.GetComponent<Text>());
-                f("whatText", tWhat);
-                f("specialText", tSpecial);
-                f("lifeText", tLife);
-                f("funText", tFun);
-                f("tabButtons", tabs.ToArray());
-                f("statLabels", statLabels.ToArray());
-                f("statValues", statValues.ToArray());
-            });
-            Wire(scanCtrl, f =>
-            {
-                f("card", cardCtrl);
-                f("scanUI", scanUI);
-                f("browseButton", browseGo);
-            });
+            Wire(scanCtrl, f => f("scanUI", scanUI));
             Wire(scanUI, f =>
             {
                 f("statusText", status.GetComponent<Text>());
                 f("scanFrame", frame);
                 f("hintLabel", hint.GetComponent<Text>());
             });
-            AddClick(bClose, cardCtrl.Close);
-            AddClick(bBrowse, scanCtrl.OpenBrowser);
             AddClick(bBack, scanCtrl.GoBack);
 
             EditorSceneManager.MarkSceneDirty(scene);
@@ -641,10 +403,16 @@ namespace SolarSystemAR.EditorBuildScripts
         static void AddToBuildSettings()
         {
             var list = new List<EditorBuildSettingsScene>();
-            foreach (var n in new[] { "LoginScene", "MainMenuScene", "ScanScene" })
+            foreach (var n in new[] { "MainMenuScene", "ScanScene" })
             {
                 var p = Dir + "/" + n + ".unity";
                 if (File.Exists(p)) list.Add(new EditorBuildSettingsScene(p, true));
+            }
+            // 保留各行星场景；重建 UI 不能丢掉已配置的构建入口。
+            foreach (var scene in EditorBuildSettings.scenes)
+            {
+                if (scene.path == Dir + "/LoginScene.unity") continue;
+                if (list.All(s => s.path != scene.path)) list.Add(scene);
             }
             EditorBuildSettings.scenes = list.ToArray();
         }

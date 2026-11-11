@@ -69,7 +69,8 @@ namespace SolarSystemAR
         {
             if (planetPrefabs == null) return null;
             foreach (var p in planetPrefabs)
-                if (p != null && p.name.ToLower() == planetId)
+                if (p != null && (p.name.ToLowerInvariant() == planetId ||
+                    (planetId == "saturn" && p.name == "SaturnWithRings")))
                     return p;
             Debug.LogWarning("PlanetPreviewRig: 未绑定 prefab " + planetId);
             return null;

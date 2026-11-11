@@ -40,3 +40,7 @@ Assets/Unity.VisualScripting.Generated/
 *.log
 UpgradeLog.htm
 
+
+# ---------- local Unity build backups / symbols ----------
+*_BurstDebugInformation_DoNotShip/
+*_BackUpThisFolder_ButDontShipItWithYourGame/

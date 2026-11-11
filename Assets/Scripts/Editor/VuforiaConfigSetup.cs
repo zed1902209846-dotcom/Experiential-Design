@@ -64,6 +64,18 @@ namespace SolarSystemAR.EditorBuildScripts
                 return;
             }
 
+            // 重建配置时仍允许同时识别最多五张星球卡。
+            var serialized = new SerializedObject(config);
+            var property = serialized.GetIterator();
+            while (property.Next(true))
+            {
+                if (property.name != "maxSimultaneousImageTargets") continue;
+                property.intValue = 5;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                AssetDatabase.SaveAssets();
+                break;
+            }
+
             Selection.activeObject = config;
             EditorGUIUtility.PingObject(config);
             Debug.Log("VuforiaConfigSetup: 已生成并选中 VuforiaConfiguration（" + AssetPath +

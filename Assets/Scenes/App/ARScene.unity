@@ -151,6 +151,9 @@ MonoBehaviour:
   statusText: {fileID: 430426589}
   scanFrame: {fileID: 1520370857}
   hintLabel: {fileID: 1515852314}
+  foundHint: Target locked - tap any planet
+  lostHint: Fit the whole orrery inside the frame
+  lostStatus: Scanning for the orrery...
 --- !u!4 &64968458
 Transform:
   m_ObjectHideFlags: 0
@@ -1375,6 +1378,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d0febdf615ac8e447aeb4d038ac977f4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SolarSystemAR.VuforiaTargetController
+  simulateTargetName: earth
 --- !u!1 &948860162
 GameObject:
   m_ObjectHideFlags: 0
@@ -2591,7 +2595,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SolarSystemAR.CelestialARContent
   data: {fileID: 11400000, guid: a2d25774916533e43a62b06dcae4167f, type: 2}
-  surfacePrefab: {fileID: 958368602555408120, guid: 89cc639ba4cdad54982220966064d474, type: 3}
+  surfacePrefab: {fileID: 6237392211571395553, guid: f397e05908efe30499a0b7ae2db78bfe, type: 3}
   nucleusPrefab: {fileID: 1307307187064567121, guid: 0c4755b1a717db54fac4cce056799594, type: 3}
   modelDiameter: 0.05
   rotationSpeed: 10
@@ -2867,7 +2871,7 @@ MonoBehaviour:
     m_FontStyle: 0
     m_BestFit: 0
     m_MinSize: 10
-    m_MaxSize: 40
+    m_MaxSize: 52
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1

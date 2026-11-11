@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.UI;
 
 namespace SolarSystemAR
 {
@@ -10,10 +9,5 @@ namespace SolarSystemAR
             SceneNavigator.GoTo(SceneNavigator.Scan);
         }
 
-        public void Logout()
-        {
-            SessionState.Reset();
-            SceneNavigator.GoTo(SceneNavigator.Login);
-        }
     }
 }

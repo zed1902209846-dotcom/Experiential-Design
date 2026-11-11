@@ -22,6 +22,11 @@ namespace SolarSystemAR
         private void OnDisable()
         {
             if (observer != null) observer.OnTargetStatusChanged -= OnStatusChanged;
+            if (tracked)
+            {
+                tracked = false;
+                Notify(false, observer != null ? observer.TargetName : simulateTargetName);
+            }
         }
 
         private void OnStatusChanged(Vuforia.ObserverBehaviour behaviour, Vuforia.TargetStatus status)
@@ -40,7 +45,7 @@ namespace SolarSystemAR
             if (scan != null)
             {
                 if (found) scan.OnTrackingFound(targetName);
-                else scan.OnTrackingLost();
+                else scan.OnTrackingLost(targetName);
             }
             var legacy = FindFirstObjectByType<PlanetScanController>(FindObjectsInactive.Include);
             if (legacy != null)
