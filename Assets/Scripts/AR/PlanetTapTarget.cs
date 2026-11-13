@@ -4,11 +4,19 @@ using UnityEngine.InputSystem;
 
 namespace SolarSystemAR
 {
-    /// 模型上的单指旋转与点击入口；拖动、长按和捏合均不当作点击。
+    /// 普通拖动旋转，长按拖动在扫描锚点附近移动；拖动、长按和捏合不当作点击。
     public class PlanetTapTarget : MonoBehaviour, IPointerDownHandler, IPointerUpHandler,
         IPointerClickHandler, IBeginDragHandler, IDragHandler, IEndDragHandler
     {
         [SerializeField, Min(0f)] private float degreesPerScreen = 360f;
+        [SerializeField, Min(0.1f)] private float moveHoldSeconds = 0.5f;
+        [SerializeField, Min(0f)] private float moveRadius = 0.1f;
+        private Vector3 anchorLocalPosition;
+        private Vector3 planeLocalPoint;
+        private Vector3 planeLocalNormal;
+        private Vector3 grabLocalOffset;
+        private bool moving;
+        private bool movePlaneReady;
         private PlanetAnnotations annotations;
         private ScanPlanetContent content;
         private Vector2 pressPosition;
@@ -18,6 +26,34 @@ namespace SolarSystemAR
         private bool dragged;
         private bool cancelled;
         private SelfRotation pausedSpin;
+
+        private void Awake()
+        {
+            anchorLocalPosition = transform.localPosition;
+        }
+
+        private Vector3 ToWorldPoint(Vector3 point) => transform.parent != null
+            ? transform.parent.TransformPoint(point) : point;
+
+        private Vector3 ToLocalPoint(Vector3 point) => transform.parent != null
+            ? transform.parent.InverseTransformPoint(point) : point;
+
+        private Camera PointerCamera(PointerEventData data) => data.pressEventCamera != null
+            ? data.pressEventCamera : Camera.main;
+
+        private bool PointerOnMovePlane(PointerEventData data, out Vector3 point)
+        {
+            point = Vector3.zero;
+            var camera = PointerCamera(data);
+            if (camera == null) return false;
+            var normal = transform.parent != null
+                ? transform.parent.TransformDirection(planeLocalNormal) : planeLocalNormal;
+            var plane = new Plane(normal, ToWorldPoint(planeLocalPoint));
+            var ray = camera.ScreenPointToRay(data.position);
+            if (!plane.Raycast(ray, out float distance)) return false;
+            point = ray.GetPoint(distance);
+            return true;
+        }
 
         private static int TouchCount()
         {
@@ -54,6 +90,21 @@ namespace SolarSystemAR
             pointerId = eventData.pointerId;
             pressed = true;
             dragged = false;
+            moving = false;
+            movePlaneReady = false;
+            var camera = PointerCamera(eventData);
+            if (camera != null)
+            {
+                planeLocalPoint = transform.localPosition;
+                planeLocalNormal = transform.parent != null
+                    ? transform.parent.InverseTransformDirection(camera.transform.forward)
+                    : camera.transform.forward;
+                if (PointerOnMovePlane(eventData, out var hit))
+                {
+                    grabLocalOffset = transform.localPosition - ToLocalPoint(hit);
+                    movePlaneReady = true;
+                }
+            }
             cancelled = TouchCount() > 1;
         }
 
@@ -72,6 +123,8 @@ namespace SolarSystemAR
             eventData.eligibleForClick = false;
             if (TouchCount() > 1) CancelRotation();
             if (cancelled) return;
+            // 手势开始时固定模式，旋转过程中停顿不会突然切换为移动。
+            moving = movePlaneReady && Time.unscaledTime - pressTime >= moveHoldSeconds;
             var spin = GetComponent<SelfRotation>();
             if (spin != null && spin.enabled)
             {
@@ -84,6 +137,16 @@ namespace SolarSystemAR
         {
             if (!pressed || !dragged || eventData.pointerId != pointerId || cancelled) return;
             if (TouchCount() > 1) { CancelRotation(); return; }
+            if (moving)
+            {
+                if (PointerOnMovePlane(eventData, out var hit))
+                {
+                    var desired = ToWorldPoint(ToLocalPoint(hit) + grabLocalOffset);
+                    var anchor = ToWorldPoint(anchorLocalPosition);
+                    transform.position = anchor + Vector3.ClampMagnitude(desired - anchor, moveRadius);
+                }
+                return;
+            }
             var camera = eventData.pressEventCamera;
             if (camera == null) camera = Camera.main;
             if (camera == null) return;
@@ -121,7 +184,7 @@ namespace SolarSystemAR
         {
             if (annotations == null || dragged || cancelled || TouchCount() > 1 ||
                 eventData.button != PointerEventData.InputButton.Left ||
-                eventData.pointerId != pointerId || eventData.dragging || Time.unscaledTime - pressTime > 0.6f) return;
+                eventData.pointerId != pointerId || eventData.dragging || Time.unscaledTime - pressTime >= Mathf.Min(0.6f, moveHoldSeconds)) return;
             float threshold = Mathf.Max(12f, Screen.dpi > 0 ? Screen.dpi * 0.08f : 12f);
             if (Vector2.Distance(pressPosition, eventData.position) > threshold) return;
             if (annotations.CanOpenFromTap) annotations.Show(content);

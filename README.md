@@ -68,7 +68,20 @@ When two planet cards are tracked, a stick figure stands on each selected planet
 
 The interface uses short prompts and symbols. Heights and answers stay hidden before the reveal. Predictions and planet switching are locked during a jump. Changing the compared pair or losing a selected card resets the round; repeated tracking notifications for the same pair preserve it.
 
-When three or more planet cards are tracked, use the arrows above the choices to change the compared pair. The layout reserves space for the planets and their full jump trajectories. A compact layout keeps all three prediction choices and the jump/retry control available when space is limited. The full panel is up to 280 Canvas units high; compact mode is 160 units high.
+When three or more planet cards are tracked, use the arrows above the choices to change the compared pair. The layout reserves space for the planets and their full jump trajectories. A compact layout keeps all three prediction choices and the jump/retry control available when space is limited. A compact layout is used when space is tight.
+
+### More experiments: day, year, and size
+
+The tabs at the top of the lab panel switch between four experiments. All of them use the same guess, watch, reveal round, and each needs two planet cards.
+
+| Tab | Question | What the visitor watches |
+| --- | --- | --- |
+| JUMP | Who jumps higher? | Both stick figures jump at once |
+| DAY | Whose day is shorter? | Both planets spin at their true relative speeds; Venus spins backwards |
+| YEAR | Whose year is shorter? | Both planets leave their cards and circle the Sun, the shorter year on the inner track; progress bars show the laps |
+| SIZE | Which is bigger? | The larger planet grows a little and the smaller one shrinks to its true relative diameter |
+
+Changing tab starts a fresh prediction; tabs are locked while a demonstration is running. In the YEAR experiment the planets circle the Sun card when it is on the table, and a small stand-in Sun placed between them otherwise. Orbit speeds are to scale; orbit distances are not. Planet sizes, positions, and spin speeds return to normal when the visitor taps **AGAIN**, changes tab, or changes the compared pair. The full panel is up to 330 Canvas units high and the compact one 190.
 
 ### Physics model
 
@@ -129,7 +142,8 @@ Main interaction entry points:
 - `ScanPlanetContent` creates and centers models and provides stable display bounds.
 - `PlanetAnnotations` and `PlanetPanelLayout` place readable names and profiles.
 - `PlanetTapTarget` and `PlanetPinchScale` handle rotation, taps, and resizing.
-- `GravityJumpComparison` coordinates the figures, prediction UI, and animation.
+- `GravityJumpComparison` coordinates the lab panel, the four experiments, and their animations.
+- `PlanetLab` holds each experiment's values, winner rule, and wording; `LabSkin` draws the panel's rounded shapes.
 - `GravityGuessRound` manages the guess/jump/reveal state.
 - `PlanetGravity` contains the gravity values and jump equations.
 

@@ -278,6 +278,7 @@ namespace SolarSystemAR
                 profile.lastBodyWidth = -1f;
             }
             profile.tagline.gameObject.SetActive(header > 100);
+            TopRect(profile.tagline.rectTransform, 18, 72, 28, 48);
             Stretch(profile.viewport, 18, header, 28, 14);
             profile.track.offsetMin = new Vector2(-14, 14);
             profile.track.offsetMax = new Vector2(-8, -header);
@@ -387,8 +388,13 @@ namespace SolarSystemAR
             profile.title = NewText("Title", profile.panel, "EARTH", 38, Color.white);
             TopRect(profile.title.rectTransform, 22, 20, 130, 52);
             profile.title.fontStyle = FontStyle.Bold;
-            profile.title.resizeTextForBestFit = true; profile.title.resizeTextMinSize = 24; profile.title.resizeTextMaxSize = 38;
+            profile.title.verticalOverflow = VerticalWrapMode.Truncate;
+            profile.title.resizeTextForBestFit = true; profile.title.resizeTextMinSize = 18; profile.title.resizeTextMaxSize = 38;
             profile.tagline = NewText("Tagline", profile.panel, "Our Only Home", 24, accent);
+            profile.tagline.resizeTextForBestFit = true;
+            profile.tagline.resizeTextMinSize = 18;
+            profile.tagline.resizeTextMaxSize = 24;
+            profile.tagline.verticalOverflow = VerticalWrapMode.Truncate;
             TopRect(profile.tagline.rectTransform, 22, 78, 140, 44);
             var close = NewRect("CloseButton", profile.panel);
             profile.close = close;

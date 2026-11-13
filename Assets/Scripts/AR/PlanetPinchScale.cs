@@ -17,6 +17,7 @@ namespace SolarSystemAR
         [SerializeField, Min(0.01f)] private float maxScaleMultiplier = 3f;
 
         private readonly List<RaycastResult> uiHits = new List<RaycastResult>();
+        private Renderer[] modelRenderers;
         private Vector3 initialScale;
         private Vector3 gestureScale;
         private float gestureDistance;
@@ -30,6 +31,7 @@ namespace SolarSystemAR
         private void Awake()
         {
             initialScale = transform.localScale;
+            modelRenderers = GetComponentsInChildren<Renderer>(true);
         }
 
         private void OnDisable()
@@ -74,7 +76,7 @@ namespace SolarSystemAR
             if (blockedUntilRelease) return;
             var firstPosition = first.position.ReadValue();
             var secondPosition = second.position.ReadValue();
-            if (OverUI(firstPosition) || OverUI(secondPosition))
+            if (OverUI(firstPosition) || OverUI(secondPosition) || OverUI((firstPosition + secondPosition) * 0.5f))
             {
                 if (gestureOwner == this) gestureOwner = null;
                 pinching = false;
@@ -93,9 +95,9 @@ namespace SolarSystemAR
             int secondId = second.touchId.ReadValue();
             if (!pinching || firstId != firstTouchId || secondId != secondTouchId)
             {
-                // 在手势开始时选定屏幕上最近的一颗，整个手势中不切换。
+                // 仅在手势中点命中模型时选定前方的一颗，整个手势中不切换。
                 if ((gestureOwner != null && gestureOwner != this) ||
-                    (gestureOwner == null && NearestPlanet((firstPosition + secondPosition) * 0.5f) != this))
+                    (gestureOwner == null && PlanetAtPosition(Camera.main, (firstPosition + secondPosition) * 0.5f) != this))
                 {
                     pinching = false;
                     blockedUntilRelease = true;
@@ -117,21 +119,27 @@ namespace SolarSystemAR
             transform.localScale = initialScale * multiplier;
         }
 
-        private static PlanetPinchScale NearestPlanet(Vector2 position)
+        private static PlanetPinchScale PlanetAtPosition(Camera camera, Vector2 position)
         {
-            var camera = Camera.main;
+            if (camera == null || !camera.pixelRect.Contains(position)) return null;
+            var ray = camera.ScreenPointToRay(position);
             PlanetPinchScale nearest = null;
             float closest = float.PositiveInfinity;
             foreach (var planet in visiblePlanets)
             {
                 if (planet == null || !planet.isActiveAndEnabled) continue;
-                if (camera == null) return planet;
-                var screenPoint = camera.WorldToScreenPoint(planet.transform.position);
-                if (screenPoint.z <= 0f) continue;
-                float distance = ((Vector2)screenPoint - position).sqrMagnitude;
-                if (distance >= closest) continue;
-                closest = distance;
-                nearest = planet;
+                foreach (var renderer in planet.modelRenderers)
+                {
+                    if (renderer == null || !renderer.enabled || !renderer.gameObject.activeInHierarchy ||
+                        renderer is ParticleSystemRenderer || renderer.forceRenderingOff ||
+                        (camera.cullingMask & (1 << renderer.gameObject.layer)) == 0) continue;
+                    // 使用各渲染器的包围盒，兼容土星环和不带 Collider 的模型。
+                    if (!renderer.bounds.IntersectRay(ray, out float distance) || distance >= closest) continue;
+                    float depth = camera.WorldToViewportPoint(ray.GetPoint(distance)).z;
+                    if (depth < camera.nearClipPlane || depth > camera.farClipPlane) continue;
+                    closest = distance;
+                    nearest = planet;
+                }
             }
             return nearest;
         }

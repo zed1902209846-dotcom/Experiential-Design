@@ -10,6 +10,7 @@ namespace SolarSystemAR
         private ScanPlanetContent[] contents;
         private PlanetAnnotations annotations;
         private GravityJumpComparison gravityLab;
+        private ARSceneLighting lighting;
         private readonly Dictionary<string, ScanPlanetContent> trackedContents = new Dictionary<string, ScanPlanetContent>();
         private int previousSleepTimeout;
 
@@ -18,7 +19,8 @@ namespace SolarSystemAR
             // 展馆里访客常常只举着手机看而不触屏：扫描期间保持屏幕常亮，离开场景时恢复。
             previousSleepTimeout = Screen.sleepTimeout;
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
-            if (GetComponent<ARSceneLighting>() == null) gameObject.AddComponent<ARSceneLighting>();
+            lighting = GetComponent<ARSceneLighting>();
+            if (lighting == null) lighting = gameObject.AddComponent<ARSceneLighting>();
             annotations = GetComponent<PlanetAnnotations>();
             if (annotations == null) annotations = gameObject.AddComponent<PlanetAnnotations>();
             gravityLab = GetComponent<GravityJumpComparison>();
@@ -41,6 +43,7 @@ namespace SolarSystemAR
             if (content.Model != null) annotations.Track(content, info);
             if (scanUI != null) scanUI.OnTrackingFound();
             gravityLab.Sync(trackedContents);
+            SyncSunlight();
         }
 
         public void OnTrackingLost(string targetName)
@@ -51,6 +54,7 @@ namespace SolarSystemAR
             if (content != null) content.Hide();
             trackedContents.Remove(info.id);
             gravityLab.Sync(trackedContents);
+            SyncSunlight();
             if (trackedContents.Count == 0 && scanUI != null) scanUI.OnTrackingLost();
         }
 
@@ -64,7 +68,14 @@ namespace SolarSystemAR
             }
             trackedContents.Clear();
             gravityLab.Sync(trackedContents);
+            SyncSunlight();
             if (scanUI != null) scanUI.OnTrackingLost();
+        }
+
+        private void SyncSunlight()
+        {
+            lighting.Sync(trackedContents);
+            if (scanUI != null) scanUI.SetSunlight(lighting.SunActive);
         }
 
         public void GoBack()

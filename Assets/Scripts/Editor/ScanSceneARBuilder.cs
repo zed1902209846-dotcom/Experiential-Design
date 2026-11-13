@@ -28,7 +28,7 @@ namespace SolarSystemAR.EditorTools
             public string go, target, prefab, card, content, ds;
             public float w, h, dia;
 
-            public PlanetDef(string go, string target, float w, float h, string prefab, string card, string content, float dia = CardW * 0.5f, string ds = "SolarCards")
+            public PlanetDef(string go, string target, float w, float h, string prefab, string card, string content, float dia = PlanetDia, string ds = "SolarCards")
             {
                 this.go = go; this.target = target; this.w = w; this.h = h;
                 this.prefab = prefab; this.card = card; this.content = content;
@@ -38,11 +38,13 @@ namespace SolarSystemAR.EditorTools
 
         /// 实体打印卡宽度（米）。所有卡片同为 6 cm，模型直径取卡面宽的 50%。
         const float CardW = 0.06f;
+        // 初始直径略小于卡宽：两张卡并排紧贴时星球之间仍留约 1 cm，不会重叠。整幅太阳系模型单独保持 0.13。
+        const float PlanetDia = 0.05f;
 
         static readonly PlanetDef[] Defs =
         {
             new PlanetDef("EarthTarget_V",   "earth",   CardW, CardW * 1.3361343f, "Earth.prefab",       "EarthCard.jpg",   "EarthContent"),
-            new PlanetDef("VenusTarget_V",   "venus1",  CardW, CardW * 0.9375f,     "Venus.prefab",      "VenusCard.jpg",   "VenusContent", CardW * 0.5f, "Vuforia/VenusCard.xml"),
+            new PlanetDef("VenusTarget_V",   "venus1",  CardW, CardW * 0.9375f,     "Venus.prefab",      "VenusCard.jpg",   "VenusContent", PlanetDia, "Vuforia/VenusCard.xml"),
             new PlanetDef("JupiterTarget_V", "jupiter", CardW, CardW * 1.1146953f, "Jupiter.prefab",     "JupiterCard.jpg", "JupiterContent"),
             new PlanetDef("MarsTarget_V",    "mars",    CardW, CardW * 1.0070423f, "Mars.prefab",        "MarsCard.jpg",    "MarsContent"),
             new PlanetDef("MercuryTarget_V", "mercury", CardW, CardW * 1.0404414f, "Mercury.prefab",     "MercuryCard.jpg", "MercuryContent"),
@@ -50,7 +52,7 @@ namespace SolarSystemAR.EditorTools
             new PlanetDef("UranusTarget_V",  "uranus",  CardW, CardW * 1.0915253f, "Uranus.prefab",      "UranusCard.jpg",  "UranusContent"),
             new PlanetDef("NeptuneTarget_V", "neptune", CardW, CardW * 1.089041f,  "Neptune.prefab",     "NeptuneCard.jpg", "NeptuneContent"),
             new PlanetDef("SunTarget_V",         "sun",         CardW, CardW * 1.1038064f, "Sun.prefab",         "SunCard.jpg",         "SunContent"),
-            new PlanetDef("SolarSystemTarget_V", "solarsystem", CardW, CardW * 1.0920717f, "SolarSystem.prefab", "SolarSystemCard.jpg", "SolarSystemContent", CardW * 0.5f),
+            new PlanetDef("SolarSystemTarget_V", "solarsystem", CardW, CardW * 1.0920717f, "SolarSystem.prefab", "SolarSystemCard.jpg", "SolarSystemContent", 0.13f),
         };
 
         static readonly System.Text.StringBuilder Log = new System.Text.StringBuilder();

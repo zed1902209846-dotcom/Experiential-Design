@@ -35,9 +35,15 @@ namespace SolarSystemAR
         }
         public void Finish(float firstGravity, float secondGravity)
         {
-            if (Phase != GravityGuessPhase.Jumping) return;
-            Answer = Mathf.Approximately(firstGravity, secondGravity) ? GravityGuess.Same
-                : firstGravity < secondGravity ? GravityGuess.First : GravityGuess.Second;
+            Finish(Mathf.Approximately(firstGravity, secondGravity) ? GravityGuess.Same
+                : firstGravity < secondGravity ? GravityGuess.First : GravityGuess.Second);
+        }
+
+        /// 其他实验（自转、公转、大小）自己判定谁获胜，再交给回合揭晓。
+        public void Finish(GravityGuess answer)
+        {
+            if (Phase != GravityGuessPhase.Jumping || answer == GravityGuess.None) return;
+            Answer = answer;
             Phase = GravityGuessPhase.Result;
         }
     }

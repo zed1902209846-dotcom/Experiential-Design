@@ -2,6 +2,7 @@
     "name": "SolarSystemAR",
     "references": [
         "Unity.InputSystem",
+        "Unity.RenderPipelines.Universal.Runtime",
         "UnityEngine.UI"
     ],
     "rootNamespace": "SolarSystemAR",

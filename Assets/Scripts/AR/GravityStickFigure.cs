@@ -69,6 +69,11 @@ namespace SolarSystemAR
             arms.SetPosition(2, new Vector3(.24f, airborne ? .84f : .46f,0));
         }
 
+        public void Hide()
+        {
+            if (root != null) root.SetActive(false);
+        }
+
         public void Dispose()
         {
             if (root != null) Object.Destroy(root);
