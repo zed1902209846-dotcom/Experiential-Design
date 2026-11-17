@@ -22,6 +22,10 @@ namespace SolarSystemAR
             public Profile profile;
             public bool open;
             public bool panelVisible;
+            public Vector2? labelOffset;
+            public Vector2? panelOffset;
+            // 实际显示的位置：平滑追向布局结果；null 表示刚出现，直接就位。
+            public Vector2? labelShown, panelShown;
         }
 
         private class Profile
@@ -39,6 +43,7 @@ namespace SolarSystemAR
         private readonly List<Annotation> visibleProfiles = new List<Annotation>();
         private readonly List<Rect> profileTargets = new List<Rect>();
         private readonly List<Rect> profileRects = new List<Rect>();
+        private readonly List<Vector2?> profileOffsets = new List<Vector2?>();
         private readonly List<Rect> planetRects = new List<Rect>();
         private readonly List<Rect> layoutObstacles = new List<Rect>();
         private GravityJumpComparison gravityLab;
@@ -84,7 +89,8 @@ namespace SolarSystemAR
             var scaler = root.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(720, 1280);
-            scaler.matchWidthOrHeight = 0f;
+            // Expand：手机（比 9:16 更高）与按宽度匹配完全一致；平板和横屏则保证至少有 720×1280 的排版空间。
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
         }
 
         private void Update()
@@ -148,6 +154,8 @@ namespace SolarSystemAR
         {
             if (!annotations.TryGetValue(content, out var annotation)) return;
             annotation.tracked = false;
+            annotation.labelOffset = null;
+            annotation.labelShown = null;
             annotation.label.gameObject.SetActive(false);
             Close(content);
         }
@@ -183,6 +191,7 @@ namespace SolarSystemAR
         {
             if (!annotations.TryGetValue(content, out var annotation)) return;
             annotation.open = false;
+            annotation.panelOffset = null;
             openAnnotations.Remove(annotation);
             if (annotation.profile != null)
             {
@@ -206,11 +215,13 @@ namespace SolarSystemAR
             var safe = SafeRect();
             visibleProfiles.Clear();
             profileTargets.Clear();
+            profileOffsets.Clear();
             planetRects.Clear();
             foreach (var annotation in annotations.Values)
             {
                 annotation.visible = annotation.tracked && Project(annotation, camera, out annotation.screenBounds);
                 annotation.panelVisible = false;
+                if (!annotation.visible || !annotation.open) annotation.panelShown = null;
                 if (annotation.visible) planetRects.Add(annotation.screenBounds);
                 annotation.label.gameObject.SetActive(annotation.visible && !annotation.open);
                 if (annotation.profile == null) continue;
@@ -224,12 +235,13 @@ namespace SolarSystemAR
                 if (!annotation.visible) continue;
                 visibleProfiles.Add(annotation);
                 profileTargets.Add(annotation.screenBounds);
+                profileOffsets.Add(annotation.panelOffset);
             }
             layoutObstacles.Clear();
             layoutObstacles.AddRange(planetRects);
             if (gravityLab == null) gravityLab = GetComponent<GravityJumpComparison>();
             if (gravityLab != null) layoutObstacles.AddRange(gravityLab.ScreenExclusions);
-            bool besidePlanets = PlanetPanelLayout.Arrange(safe, profileTargets, layoutObstacles, profileRects);
+            bool besidePlanets = PlanetPanelLayout.Arrange(safe, profileTargets, layoutObstacles, profileOffsets, profileRects);
             for (int i = 0; i < visibleProfiles.Count; i++)
             {
                 var annotation = visibleProfiles[i];
@@ -237,9 +249,15 @@ namespace SolarSystemAR
                 var rect = profileRects[i];
                 annotation.panelVisible = rect.width > 0 && rect.height > 0;
                 profile.panel.gameObject.SetActive(annotation.panelVisible);
-                if (!annotation.panelVisible) continue;
+                if (!annotation.panelVisible) { annotation.panelShown = null; continue; }
+                annotation.panelOffset = rect.center - annotation.screenBounds.center;
+                var corner = new Vector2(rect.xMin, rect.yMax);
+                annotation.panelShown = annotation.panelShown.HasValue
+                    ? PlanetPanelLayout.Follow(annotation.panelShown.Value, corner, Time.unscaledDeltaTime) : corner;
+                corner = annotation.panelShown.Value;
                 profile.panel.sizeDelta = rect.size;
-                profile.panel.anchoredPosition = new Vector2(rect.xMin, rect.yMax);
+                profile.panel.anchoredPosition = corner;
+                rect.position = new Vector2(corner.x, corner.y - rect.height);
                 profile.panel.localRotation = Quaternion.identity;
                 ApplyProfileLayout(profile, rect.height);
                 ResizeBody(profile);
@@ -251,13 +269,18 @@ namespace SolarSystemAR
             labelRects.AddRange(profileRects);
             foreach (var annotation in annotations.Values)
             {
-                if (!annotation.visible || annotation.panelVisible) continue;
+                if (!annotation.visible || annotation.panelVisible) { annotation.labelShown = null; continue; }
                 Rect labelRect;
-                bool placed = PlanetPanelLayout.PlaceLabel(safe, annotation.screenBounds, layoutObstacles, labelRects, out labelRect);
+                bool placed = PlanetPanelLayout.PlaceLabel(safe, annotation.screenBounds, layoutObstacles, labelRects,
+                    annotation.labelOffset, out labelRect);
                 annotation.label.gameObject.SetActive(placed);
-                if (!placed) continue;
+                if (!placed) { annotation.labelShown = null; continue; }
+                annotation.labelShown = annotation.labelShown.HasValue
+                    ? PlanetPanelLayout.Follow(annotation.labelShown.Value, labelRect.center, Time.unscaledDeltaTime)
+                    : labelRect.center;
                 annotation.label.sizeDelta = labelRect.size;
-                annotation.label.anchoredPosition = labelRect.center;
+                annotation.label.anchoredPosition = annotation.labelShown.Value;
+                annotation.labelOffset = labelRect.center - annotation.screenBounds.center;
                 labelRects.Add(labelRect);
             }
         }

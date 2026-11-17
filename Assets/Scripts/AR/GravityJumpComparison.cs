@@ -607,7 +607,7 @@ namespace SolarSystemAR
             var scaler = canvasRect.gameObject.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(720, 1280);
-            scaler.matchWidthOrHeight = 0;
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand; // 与 PlanetAnnotations 保持同一坐标系
             canvasRect.gameObject.AddComponent<GraphicRaycaster>();
 
             dock = NewRect("GravityLab", canvasRect);

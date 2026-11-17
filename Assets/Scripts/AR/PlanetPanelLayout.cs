@@ -8,6 +8,8 @@ namespace SolarSystemAR
     {
         private const float PlanetGap = 20f;
         private const float PanelGap = 12f;
+        private const float SwitchPenalty = 80f;
+        private const float FollowSlow = 5f, FollowFast = 28f, FollowFastDistance = 120f;
 
         public static bool PlaceOverlay(Rect safe, IList<Rect> obstacles, Vector2 preferred, Vector2 minimum, out Rect rect)
         {
@@ -17,6 +19,13 @@ namespace SolarSystemAR
 
         public static bool Arrange(Rect safe, IList<Rect> targets, IList<Rect> planets, List<Rect> result)
         {
+            return Arrange(safe, targets, planets, null, result);
+        }
+
+        /// previousOffsets：与 targets 一一对应，上一帧介绍框中心相对星球中心的偏移（没有则为 null）。
+        public static bool Arrange(Rect safe, IList<Rect> targets, IList<Rect> planets,
+            IList<Vector2?> previousOffsets, List<Rect> result)
+        {
             result.Clear();
             var free = FreeSpace(safe, planets, PlanetGap);
             bool allPlaced = true;
@@ -25,7 +34,8 @@ namespace SolarSystemAR
                 Rect rect;
                 // 新近打开的框优先；正文滚动，不再用覆盖星球的居中网格兜底。
                 if (FindSpace(free, targets[i], new Vector2(320, targets.Count == 1 ? 400 : 340),
-                    new Vector2(260, 180), out rect))
+                    new Vector2(260, 180), out rect,
+                    previousOffsets != null && i < previousOffsets.Count ? previousOffsets[i] : null))
                 {
                     result.Add(rect);
                     Subtract(free, Expand(rect, PanelGap));
@@ -41,10 +51,27 @@ namespace SolarSystemAR
 
         public static bool PlaceLabel(Rect safe, Rect target, IList<Rect> planets, IList<Rect> occupied, out Rect rect)
         {
+            return PlaceLabel(safe, target, planets, occupied, null, out rect);
+        }
+
+        /// previousOffset：上一帧名称中心相对星球中心的偏移。上下两侧得分接近时保持原来的一侧，
+        /// 避免追踪抖动让名称在星球上方和下方之间来回跳。
+        public static bool PlaceLabel(Rect safe, Rect target, IList<Rect> planets, IList<Rect> occupied,
+            Vector2? previousOffset, out Rect rect)
+        {
             var free = FreeSpace(safe, planets, PlanetGap);
             foreach (var panel in occupied)
                 if (panel.width > 0 && panel.height > 0) Subtract(free, Expand(panel, PanelGap));
-            return FindSpace(free, target, new Vector2(180, 48), new Vector2(180, 48), out rect);
+            return FindSpace(free, target, new Vector2(180, 48), new Vector2(180, 48), out rect, previousOffset);
+        }
+
+        /// 让显示位置平滑地追向布局位置：几像素的追踪抖动被大幅削弱，大幅移动（换边、快速移动设备）仍然跟得紧。
+        public static Vector2 Follow(Vector2 shown, Vector2 target, float deltaTime)
+        {
+            float distance = Vector2.Distance(shown, target);
+            if (distance < 0.01f) return target;
+            float rate = Mathf.Lerp(FollowSlow, FollowFast, distance / FollowFastDistance);
+            return Vector2.Lerp(shown, target, 1f - Mathf.Exp(-rate * Mathf.Max(0f, deltaTime)));
         }
 
         private static List<Rect> FreeSpace(Rect safe, IList<Rect> planets, float gap)
@@ -56,7 +83,8 @@ namespace SolarSystemAR
             return free;
         }
 
-        private static bool FindSpace(List<Rect> free, Rect target, Vector2 preferred, Vector2 minimum, out Rect result)
+        private static bool FindSpace(List<Rect> free, Rect target, Vector2 preferred, Vector2 minimum, out Rect result,
+            Vector2? previousOffset = null)
         {
             result = Rect.zero;
             float best = float.PositiveInfinity;
@@ -71,6 +99,10 @@ namespace SolarSystemAR
                 // 兼顾与所属星球的距离和可阅读面积；同一输入始终得到相同结果。
                 float score = Vector2.Distance(candidate.center, target.center)
                     + (1f - width * height / (preferred.x * preferred.y)) * 240f;
+                // 换边要比留在原处明显更好才值得，否则保持上一帧的位置关系。
+                if (previousOffset.HasValue)
+                    score += Mathf.Min(SwitchPenalty,
+                        Vector2.Distance(candidate.center - target.center, previousOffset.Value));
                 if (score >= best) continue;
                 best = score;
                 result = candidate;
