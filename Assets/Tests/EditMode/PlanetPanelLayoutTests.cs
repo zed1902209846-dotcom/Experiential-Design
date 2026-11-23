@@ -56,6 +56,34 @@ namespace SolarSystemAR.Tests
         }
 
         [Test]
+        public void ArProfileStaysToTheLeftAndAvoidsOtherUi()
+        {
+            var planet = new Rect(440, 500, 140, 140);
+            var dock = new Rect(0, 0, 720, 370);
+            var openProfile = new Rect(90, 580, 320, 290);
+            Assert.IsTrue(PlanetPanelLayout.PlaceProfileToLeft(Safe, planet, new[] { planet, dock },
+                new[] { openProfile }, new Vector2(320, 400), out Rect profile));
+            AssertInside(Safe, profile);
+            Assert.Less(profile.xMax, planet.xMin);
+            Assert.IsFalse(profile.Overlaps(dock));
+            Assert.IsFalse(profile.Overlaps(openProfile));
+        }
+
+        [Test]
+        public void ArProfileUsesSpaceAboveOrBelowTheLeftSideBeforeCollapsing()
+        {
+            var centralPlanet = new Rect(160, 485, 236, 236);
+            Assert.IsTrue(PlanetPanelLayout.PlaceProfileToLeft(Safe, centralPlanet, new[] { centralPlanet },
+                new Rect[0], new Vector2(320, 400), out Rect profile));
+            Assert.Less(profile.xMax, centralPlanet.center.x);
+            Assert.IsFalse(profile.Overlaps(centralPlanet));
+
+            var edgePlanet = new Rect(10, 485, 180, 180);
+            Assert.IsFalse(PlanetPanelLayout.PlaceProfileToLeft(Safe, edgePlanet, new[] { edgePlanet },
+                new Rect[0], new Vector2(320, 400), out profile));
+        }
+
+        [Test]
         public void LayoutIsDeterministic()
         {
             var planets = new[] { new Rect(80, 900, 160, 160), new Rect(460, 260, 160, 160) };

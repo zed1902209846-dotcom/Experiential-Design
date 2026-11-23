@@ -135,3 +135,73 @@ namespace SolarSystemAR
         }
     }
 }
+
+namespace SolarSystemAR
+{
+    internal static class MuseumLabCopy
+    {
+        public static string Tab(LabExperiment experiment)
+        {
+            switch (experiment)
+            {
+                case LabExperiment.Day: return "Spin";
+                case LabExperiment.Year: return "Orbit";
+                case LabExperiment.Size: return "Size";
+                default: return "Jump";
+            }
+        }
+
+        public static string Question(LabExperiment experiment)
+        {
+            switch (experiment)
+            {
+                case LabExperiment.Day: return "Which planet has a shorter day?";
+                case LabExperiment.Year: return "Which planet has a shorter year?";
+                case LabExperiment.Size: return "Which planet is bigger?";
+                default: return "Where can you jump higher?";
+            }
+        }
+
+        public static string Action(LabExperiment experiment)
+        {
+            switch (experiment)
+            {
+                case LabExperiment.Day: return "Start spin";
+                case LabExperiment.Year: return "Start orbit";
+                case LabExperiment.Size: return "Compare";
+                default: return "Start jump";
+            }
+        }
+
+        public static string Observing(LabExperiment experiment)
+            => experiment == LabExperiment.Jump ? "They jumped at the same time!" : "Watch both planets.";
+
+        public static string Result(LabExperiment experiment, string winner, bool tie)
+        {
+            switch (experiment)
+            {
+                case LabExperiment.Day: return tie ? "Their days are the same length." : $"{winner} has a shorter day!";
+                case LabExperiment.Year: return tie ? "Their years are the same length." : $"{winner} has a shorter year!";
+                case LabExperiment.Size: return tie ? "They are the same size." : $"{winner} is bigger!";
+                default: return tie ? "They jump equally high!" : $"You jump higher on {winner}!";
+            }
+        }
+
+        public static string Explanation(LabExperiment experiment, GravityGuessPhase phase, string winner, bool tie,
+            bool hasGiant, bool hasVenus)
+        {
+            switch (experiment)
+            {
+                case LabExperiment.Day: return hasVenus ? "One turn is one day. Venus spins in the opposite direction." : "One turn is one day. The spin speeds are to scale.";
+                case LabExperiment.Year: return "One orbit is one year. Speeds are to scale. Distances are simplified.";
+                case LabExperiment.Size: return "The planets are shown in proportion to their actual diameters.";
+                default:
+                    if (phase == GravityGuessPhase.Jumping) return "Watch which jumper goes higher.";
+                    if (phase != GravityGuessPhase.Result) return "Both jumpers take off at the same speed.";
+                    string conclusion = tie ? "Equal gravity and equal takeoff speeds give equal jump heights."
+                        : $"{winner} has weaker gravity, so the same takeoff speed gives a higher jump.";
+                    return hasGiant ? conclusion + "\nGiant-planet gravity is measured at 1 bar." : conclusion;
+            }
+        }
+    }
+}

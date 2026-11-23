@@ -48,7 +48,6 @@ namespace SolarSystemAR.EditorTools
 
             // 2. Player 设置（幂等）
             PlayerSettings.companyName = "TaylorUniversity";
-            PlayerSettings.productName = "AR Solar System";
             PlayerSettings.SetApplicationIdentifier(BuildTargetGroup.Android, "com.taylor.arsolarsystem");
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.Portrait;
             PlayerSettings.SetScriptingBackend(BuildTargetGroup.Android, ScriptingImplementation.IL2CPP);

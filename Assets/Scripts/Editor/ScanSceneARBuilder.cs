@@ -14,7 +14,7 @@ namespace SolarSystemAR.EditorTools
     /// 3. ARCamera（缺失则创建）+ PhysicsRaycaster
     /// 4. 建 8 大行星 ImageTarget（尺寸取自 SolarCards.xml），挂 VuforiaTargetController
     /// 5. 每个目标下挂 ScanPlanetContent（earth/jupiter 复用已有内容，其余新建）
-    /// 6. PlanetScanController.planets 列表写入 8 条绑定（目标名/内容/科普卡片）
+    /// 6. 每个追踪目标以子物件关联对应的行星模型
     /// 7. 保存场景
     public static class ScanSceneARBuilder
     {
@@ -131,9 +131,7 @@ namespace SolarSystemAR.EditorTools
                 if (content != null) built++;
             }
 
-            // 5. 无需绑定列表：ScanController.Awake() 会自行 FindObjectsByType<ScanPlanetContent> 发现内容
-
-            // 6. 保存
+            // 5. 保存
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
             Log.AppendLine("SCENE SAVED: " + scene.path + " | content ready: " + built + "/" + Defs.Length);

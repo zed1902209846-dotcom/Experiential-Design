@@ -29,16 +29,19 @@ namespace SolarSystemAR
         }
 
         private readonly List<Choice> choices = new List<Choice>();
-        private readonly List<Rect> obstacles = new List<Rect>();
         private readonly List<Rect> exclusions = new List<Rect>();
         public IReadOnlyList<Rect> ScreenExclusions => exclusions;
         private Choice first, second;
         private GravityStickFigure figureA, figureB;
+        private GravityStickFigure.Artwork figureArtA, figureArtB;
         private Material figureMaterial;
         private RectTransform canvasRect, dock;
+        private Rect lastSafeArea, dockPlacement;
+        private bool layoutHasPairControls, layoutShowsResult;
         private Text facts, prompt, note, actionLabel;
         private Image actionFill;
-        private Button action, cycleA, cycleB;
+        private Button action, endExperience, cycleA, cycleB;
+        private Text endLabel;
         private Card cardA, cardSame, cardB;
         private readonly List<Card> tabs = new List<Card>();
         private readonly GravityGuessRound round = new GravityGuessRound();
@@ -120,8 +123,10 @@ namespace SolarSystemAR
         {
             ClearFigures();
             if (first == null || second == null || figureMaterial == null) return;
-            figureA = new GravityStickFigure(first.content, transform, Cyan, figureMaterial);
-            figureB = new GravityStickFigure(second.content, transform, Gold, figureMaterial);
+            figureArtA ??= new GravityStickFigure.Artwork(Cyan);
+            figureArtB ??= new GravityStickFigure.Artwork(Gold);
+            figureA = new GravityStickFigure(first.content, transform, figureArtA);
+            figureB = new GravityStickFigure(second.content, transform, figureArtB);
         }
 
         private void Cycle(bool slotA)
@@ -256,57 +261,52 @@ namespace SolarSystemAR
         private void LateUpdate()
         {
             exclusions.Clear();
-            if (first == null || second == null || figureA == null || figureB == null || canvasRect == null) return;
-            var camera = Camera.main;
-            if (camera == null) return;
-            if (!figureA.Ready || !figureB.Ready) { dock.gameObject.SetActive(false); return; }
-            if (IsJumping) runClock += Mathf.Min(Time.unscaledDeltaTime, MaxFrameStep);
+            Rect safe = SafeRect();
+            bool visible = PairReady() && safe.width > 0 && safe.height > 0;
+            dock.gameObject.SetActive(visible);
+            if (!visible)
+            {
+                figureA?.Hide();
+                figureB?.Hide();
+                return;
+            }
+            LayoutDock(safe);
+            exclusions.Add(dockPlacement);
 
+            var camera = Camera.main;
             float progressA = 0, progressB = 0;
-            if (experiment == LabExperiment.Jump) AnimateJump(camera);
+            if (camera != null)
+            {
+                if (IsJumping) runClock += Mathf.Min(Time.unscaledDeltaTime, MaxFrameStep);
+                if (experiment == LabExperiment.Jump)
+                {
+                    AnimateJump(camera);
+                    float size = FigureSize();
+                    float worldPerMeter = WorldPerMeter(size);
+                    ProtectJump(figureA, first.gravity, size, worldPerMeter, camera);
+                    ProtectJump(figureB, second.gravity, size, worldPerMeter, camera);
+                }
+                else
+                {
+                    figureA.Hide();
+                    figureB.Hide();
+                    if (experiment == LabExperiment.Size) AnimateSize();
+                    else AnimateRace(out progressA, out progressB);
+                }
+
+                if (orbit != null && orbit.Active && Project(orbit.WorldBounds, camera, out Rect orbitRect))
+                    exclusions.Add(orbitRect);
+            }
             else
             {
                 figureA.Hide();
                 figureB.Hide();
-                if (experiment == LabExperiment.Size) AnimateSize();
-                else AnimateRace(out progressA, out progressB);
             }
 
-            obstacles.Clear();
-            foreach (var choice in choices)
-                if (choice.content.TryGetScreenBounds(camera, canvasRect, out Rect rect)) obstacles.Add(rect);
-            if (orbit != null && orbit.Active && Project(orbit.WorldBounds, camera, out Rect orbitRect))
-            {
-                obstacles.Add(orbitRect);
-                exclusions.Add(orbitRect);
-            }
-            if (experiment == LabExperiment.Jump)
-            {
-                float size = FigureSize();
-                float worldPerMeter = WorldPerMeter(size);
-                ProtectJump(figureA, first.gravity, size, worldPerMeter, camera);
-                ProtectJump(figureB, second.gravity, size, worldPerMeter, camera);
-            }
-
-            Rect safe = SafeRect();
-            bool full = PlanetPanelLayout.PlaceOverlay(safe, obstacles, new Vector2(Mathf.Min(660, safe.width), 330),
-                new Vector2(Mathf.Min(360, safe.width), 322), out Rect placement);
-            if (!full && !PlanetPanelLayout.PlaceOverlay(safe, obstacles, new Vector2(Mathf.Min(420, safe.width), 190),
-                new Vector2(Mathf.Min(280, safe.width), 190), out placement))
-            {
-                dock.gameObject.SetActive(false);
-                return;
-            }
-            dock.gameObject.SetActive(true);
-            dock.sizeDelta = placement.size;
-            dock.anchoredPosition = new Vector2(placement.xMin, placement.yMax);
-            Layout(full);
             bool racing = (experiment == LabExperiment.Day || experiment == LabExperiment.Year)
                 && (IsJumping || Phase == GravityGuessPhase.Result);
             SetBar(cardA, racing, progressA);
             SetBar(cardB, racing, progressB);
-            RefreshControls();
-            exclusions.Add(placement);
         }
 
         private float FigureSize()
@@ -365,13 +365,11 @@ namespace SolarSystemAR
 
         private void ProtectJump(GravityStickFigure figure, float gravity, float size, float scale, Camera camera)
         {
-            var surface = figure.SurfaceBounds;
-            float radius = Mathf.Max(surface.extents.x, Mathf.Max(surface.extents.y, surface.extents.z));
-            var foot = surface.center + camera.transform.up * radius;
+            var foot = figure.GroundPosition(camera, size * .65f);
             var top = foot + camera.transform.up * (PlanetGravity.Peak(gravity) * scale + size * .7f);
             var bounds = new Bounds(foot, Vector3.one * size * .35f);
             bounds.Encapsulate(top);
-            if (Project(bounds, camera, out Rect rect)) { obstacles.Add(rect); exclusions.Add(rect); }
+            if (Project(bounds, camera, out Rect rect)) exclusions.Add(rect);
         }
 
         private bool Project(Bounds bounds, Camera camera, out Rect rect)
@@ -397,7 +395,7 @@ namespace SolarSystemAR
         {
             RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, Screen.safeArea.min, null, out Vector2 min);
             RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, Screen.safeArea.max, null, out Vector2 max);
-            return Rect.MinMaxRect(min.x + 16, min.y + Mathf.Min(200, (max.y - min.y) * .18f), max.x - 16, max.y - 110);
+            return Rect.MinMaxRect(min.x + 16, min.y + 16, max.x - 16, max.y - 16);
         }
 
         private void UpdateCopy()
@@ -405,13 +403,19 @@ namespace SolarSystemAR
             if (first == null || second == null) return;
             bool result = Phase == GravityGuessPhase.Result;
             float a = Value(first), b = Value(second);
-            cardA.label.text = first.info.display + (result ? "\n" + PlanetLab.Format(experiment, a) : "");
-            cardB.label.text = second.info.display + (result ? "\n" + PlanetLab.Format(experiment, b) : "");
-            prompt.text = result ? (round.IsCorrect ? "CORRECT!" : "NICE TRY!")
-                : IsJumping ? "WATCH!" : PlanetLab.Question(experiment);
-            prompt.color = !result ? Cyan : round.IsCorrect ? Green : Amber;
-            facts.text = result ? PlanetLab.Fact(experiment, first.info.display, a, second.info.display, b) : "";
-            note.text = PlanetLab.Note(experiment, first.info.id, second.info.id);
+            string firstName = first.info.display;
+            string secondName = second.info.display;
+            cardA.label.text = firstName + (result ? "\n" + PlanetLab.Format(experiment, a) : "");
+            cardB.label.text = secondName + (result ? "\n" + PlanetLab.Format(experiment, b) : "");
+            string winner = round.Answer == GravityGuess.First ? firstName : secondName;
+            bool tie = round.Answer == GravityGuess.Same;
+            prompt.text = result ? MuseumLabCopy.Result(experiment, winner, tie)
+                : IsJumping ? MuseumLabCopy.Observing(experiment) : MuseumLabCopy.Question(experiment);
+            prompt.color = result ? Green : Cyan;
+            facts.text = result ? (round.IsCorrect ? "Correct prediction" : "Compare the results.") : "";
+            note.text = MuseumLabCopy.Explanation(experiment, Phase, winner, tie,
+                PlanetGravity.IsGiant(first.info.id) || PlanetGravity.IsGiant(second.info.id),
+                PlanetLab.SpinsBackwards(first.info.id) || PlanetLab.SpinsBackwards(second.info.id));
             Highlight(cardA, GravityGuess.First);
             Highlight(cardSame, GravityGuess.Same);
             Highlight(cardB, GravityGuess.Second);
@@ -446,7 +450,8 @@ namespace SolarSystemAR
             cycleB.gameObject.SetActive(choices.Count > 2);
             cycleA.interactable = cycleB.interactable = !IsJumping;
             foreach (var tab in tabs) tab.button.interactable = !IsJumping;
-            actionLabel.text = result ? "AGAIN" : IsJumping ? "..." : ready ? PlanetLab.Action(experiment) : "PICK ONE";
+            actionLabel.text = result ? "Try again" : IsJumping ? "Running…" : MuseumLabCopy.Action(experiment);
+            endExperience.gameObject.SetActive(result);
             // 主按钮只有在能按的时候才是实心亮色，引导下一步该点哪里。
             actionFill.color = ready ? Cyan : result ? Gold : Muted;
             actionLabel.color = ready || result ? Ink : SoftText;
@@ -460,52 +465,95 @@ namespace SolarSystemAR
             if (visible) card.bar.anchorMax = new Vector2(Mathf.Clamp01(progress), 1f);
         }
 
-        private void Layout(bool full)
+        private void LayoutDock(Rect safe)
         {
-            float side = 14f;
-            float tabTop = full ? 12 : 8, tabHeight = full ? 36 : 28;
+            bool hasPairControls = choices.Count > 2;
+            bool result = Phase == GravityGuessPhase.Result;
+            if (lastSafeArea == safe && layoutHasPairControls == hasPairControls && layoutShowsResult == result)
+                return;
+            lastSafeArea = safe;
+            layoutHasPairControls = hasPairControls;
+            layoutShowsResult = result;
+
+            bool wide = safe.width >= 880f;
+            bool landscape = safe.width >= safe.height * 1.12f;
+            float width = Mathf.Min(safe.width, landscape ? 1520f : wide ? 1040f : 720f);
+            bool inlineQuestion = landscape && width >= 1240f;
+            float touchHeight = landscape ? 152f : wide ? 84f : 96f;
+            float textScale = landscape ? 1.6f : 1f;
+            const float side = 16f;
+            const float gap = 10f;
+
+            float tabRegionWidth = inlineQuestion ? width * .54f : width - side;
+            float tabWidth = (tabRegionWidth - side - gap * (tabs.Count - 1)) / tabs.Count;
             for (int i = 0; i < tabs.Count; i++)
             {
-                var tab = (RectTransform)tabs[i].button.transform;
-                Region(tab, 0, tabTop, 0, tabHeight);
-                tab.anchorMin = new Vector2(i / (float)tabs.Count, 1);
-                tab.anchorMax = new Vector2((i + 1) / (float)tabs.Count, 1);
-                tab.offsetMin = new Vector2(i == 0 ? side : 3, tab.offsetMin.y);
-                tab.offsetMax = new Vector2(i == tabs.Count - 1 ? -side : -3, tab.offsetMax.y);
+                float left = side + i * (tabWidth + gap);
+                Region((RectTransform)tabs[i].button.transform, left, side, width - left - tabWidth, touchHeight);
+                ScaleLabel(tabs[i].label, textScale);
             }
 
-            float promptTop = full ? 56 : 40, promptHeight = full ? 34 : 26;
-            float inset = choices.Count > 2 ? 56 : side;
-            Region(prompt.rectTransform, inset, promptTop, inset, promptHeight);
-            var previous = (RectTransform)cycleA.transform;
-            Region(previous, side, promptTop - 2, 0, promptHeight + 4);
-            previous.anchorMax = new Vector2(0, 1);
-            previous.offsetMax = new Vector2(side + 38, previous.offsetMax.y);
-            var next = (RectTransform)cycleB.transform;
-            Region(next, 0, promptTop - 2, side, promptHeight + 4);
-            next.anchorMin = new Vector2(1, 1);
-            next.offsetMin = new Vector2(-side - 38, next.offsetMin.y);
+            float questionTop = inlineQuestion ? side : side + touchHeight + gap;
+            float questionHeight = inlineQuestion || hasPairControls ? touchHeight : 70f * textScale;
+            float questionLeft = inlineQuestion ? tabRegionWidth + gap : side;
+            float arrowWidth = inlineQuestion ? touchHeight * .86f : touchHeight;
+            float arrowSpace = hasPairControls ? arrowWidth + gap : 0f;
+            float titleHeight = result ? questionHeight * .53f : questionHeight;
+            Region(prompt.rectTransform, questionLeft + arrowSpace, questionTop, side + arrowSpace, titleHeight);
+            Region(facts.rectTransform, questionLeft + arrowSpace, questionTop + titleHeight,
+                side + arrowSpace, questionHeight - titleHeight);
+            facts.gameObject.SetActive(result);
+            Region((RectTransform)cycleA.transform, questionLeft, questionTop, width - questionLeft - arrowWidth, touchHeight);
+            Region((RectTransform)cycleB.transform, width - side - arrowWidth, questionTop, side, touchHeight);
 
-            float answerTop = full ? 98 : 70, answerHeight = full ? 82 : 54;
-            var a = (RectTransform)cardA.button.transform;
-            Region(a, side, answerTop, 4, answerHeight);
-            a.anchorMax = new Vector2(.4f, 1);
-            var tie = (RectTransform)cardSame.button.transform;
-            Region(tie, 4, answerTop, 4, answerHeight);
-            tie.anchorMin = new Vector2(.4f, 1);
-            tie.anchorMax = new Vector2(.6f, 1);
-            var b = (RectTransform)cardB.button.transform;
-            Region(b, 4, answerTop, side, answerHeight);
-            b.anchorMin = new Vector2(.6f, 1);
+            float answerTop = questionTop + questionHeight + gap;
+            bool inlineAction = wide && !result;
+            float actionWidth = inlineAction ? Mathf.Clamp(width * .24f, 210f, 360f) : 0f;
+            float answerRight = inlineAction ? side + actionWidth + gap : side;
+            float answerWidth = width - side - answerRight - 2 * gap;
+            float tieWidth = Mathf.Min(answerWidth * .27f, Mathf.Max(touchHeight, answerWidth * .18f));
+            float planetWidth = (answerWidth - tieWidth) * .5f;
+            Region((RectTransform)cardA.button.transform, side, answerTop, width - side - planetWidth, touchHeight);
+            Region((RectTransform)cardSame.button.transform, side + planetWidth + gap, answerTop,
+                answerRight + planetWidth + gap, touchHeight);
+            Region((RectTransform)cardB.button.transform, width - answerRight - planetWidth, answerTop,
+                answerRight, touchHeight);
 
-            facts.gameObject.SetActive(full && Phase == GravityGuessPhase.Result);
-            Region(facts.rectTransform, side, 186, side, 32);
-            note.gameObject.SetActive(full);
-            var actionRect = (RectTransform)action.transform;
-            actionRect.anchorMin = new Vector2(0, 0);
-            actionRect.anchorMax = new Vector2(1, 0);
-            actionRect.offsetMin = new Vector2(side, full ? 38 : 8);
-            actionRect.offsetMax = new Vector2(-side, full ? 98 : 58);
+            float actionTop = inlineAction ? answerTop : answerTop + touchHeight + gap;
+            float noteHeight = (result ? 62f : 38f) * textScale;
+            float noteTop = actionTop + touchHeight + gap;
+            float bottom = noteTop + noteHeight;
+            if (result)
+            {
+                noteTop = actionTop;
+                actionTop = noteTop + noteHeight + gap;
+                bottom = actionTop + touchHeight;
+            }
+
+            Region((RectTransform)action.transform, inlineAction ? width - side - actionWidth : side, actionTop,
+                result ? (width + gap) * .5f : side, touchHeight);
+            Region((RectTransform)endExperience.transform, (width + gap) * .5f, actionTop, side, touchHeight);
+            Region(note.rectTransform, side, noteTop, side, noteHeight);
+            ScaleLabel(prompt, textScale);
+            ScaleLabel(facts, textScale);
+            ScaleLabel(cardA.label, textScale);
+            ScaleLabel(cardSame.label, textScale);
+            ScaleLabel(cardB.label, textScale);
+            ScaleLabel(actionLabel, textScale);
+            ScaleLabel(endLabel, textScale);
+            ScaleLabel(cycleA.GetComponentInChildren<Text>(true), textScale);
+            ScaleLabel(cycleB.GetComponentInChildren<Text>(true), textScale);
+            ScaleLabel(note, textScale);
+
+            dockPlacement = new Rect(safe.center.x - width * .5f, safe.yMin, width, bottom + side);
+            dock.sizeDelta = dockPlacement.size;
+            dock.anchoredPosition = new Vector2(dockPlacement.xMin, dockPlacement.yMax);
+        }
+
+        private static void ScaleLabel(Text label, float scale)
+        {
+            label.resizeTextMaxSize = Mathf.RoundToInt(label.fontSize * scale);
+            label.resizeTextMinSize = Mathf.RoundToInt(Mathf.Max(14, label.fontSize - 8) * scale);
         }
 
         private RectTransform NewRect(string name, Transform parent)
@@ -620,32 +668,31 @@ namespace SolarSystemAR
             foreach (var item in PlanetLab.All)
             {
                 var target = item;
-                tabs.Add(NewCard("Tab" + PlanetLab.Tab(item), dock, PlanetLab.Tab(item), 20, SoftText, 1.25f,
+                tabs.Add(NewCard("Tab" + PlanetLab.Tab(item), dock, MuseumLabCopy.Tab(item), 28, SoftText, 1.25f,
                     () => SetExperiment(target)));
             }
 
-            prompt = Label("Question", dock, PlanetLab.Question(experiment), 26, Cyan);
-            cardA = NewCard("GuessFirst", dock, "", 24, Cyan, 1.5f, () => Guess(GravityGuess.First));
-            cardSame = NewCard("GuessSame", dock, "=", 30, Color.white, 1.5f, () => Guess(GravityGuess.Same));
-            cardB = NewCard("GuessSecond", dock, "", 24, Gold, 1.5f, () => Guess(GravityGuess.Second));
-            cycleA = NewCard("CycleFirst", dock, "<", 24, Cyan, 1.6f, () => Cycle(true)).button;
-            cycleB = NewCard("CycleSecond", dock, ">", 24, Gold, 1.6f, () => Cycle(false)).button;
+            prompt = Label("Question", dock, MuseumLabCopy.Question(experiment), 29, Cyan);
+            cardA = NewCard("GuessFirst", dock, "", 30, Cyan, 1.5f, () => Guess(GravityGuess.First));
+            cardSame = NewCard("GuessSame", dock, "Same height", 26, Color.white, 1.5f, () => Guess(GravityGuess.Same));
+            cardB = NewCard("GuessSecond", dock, "", 30, Gold, 1.5f, () => Guess(GravityGuess.Second));
+            cycleA = NewCard("CycleFirst", dock, "<", 30, Cyan, 1.6f, () => Cycle(true)).button;
+            cycleB = NewCard("CycleSecond", dock, ">", 30, Gold, 1.6f, () => Cycle(false)).button;
 
             facts = Label("Result", dock, "", 24, Color.white);
             facts.gameObject.SetActive(false);
-            note = Label("ScienceNote", dock, "", 16, SoftText);
+            note = Label("ScienceNote", dock, "", 23, SoftText);
             note.fontStyle = FontStyle.Normal;
-            note.rectTransform.anchorMin = Vector2.zero;
-            note.rectTransform.anchorMax = new Vector2(1, 0);
-            note.rectTransform.offsetMin = new Vector2(14, 8);
-            note.rectTransform.offsetMax = new Vector2(-14, 32);
 
-            var primary = NewCard("RunExperiment", dock, "PICK ONE", 26, Color.white, 1.1f, PrimaryAction);
+            var primary = NewCard("RunExperiment", dock, "Start jump", 30, Color.white, 1.1f, PrimaryAction);
             action = primary.button;
             actionFill = primary.fill;
             actionLabel = primary.label;
+            var exit = NewCard("EndExperience", dock, "End experience", 28, SoftText, 1.1f,
+                () => SceneNavigator.GoTo(SceneNavigator.MainMenu));
+            endExperience = exit.button;
+            endLabel = exit.label;
 
-            Layout(true);
             RefreshControls();
             dock.gameObject.SetActive(false);
         }
@@ -665,6 +712,8 @@ namespace SolarSystemAR
         private void OnDestroy()
         {
             ClearFigures();
+            figureArtA?.Dispose();
+            figureArtB?.Dispose();
             if (orbit != null) orbit.Dispose();
             if (canvasRect != null) Destroy(canvasRect.gameObject);
         }

@@ -176,6 +176,7 @@ namespace SolarSystemAR.EditorBuildScripts
 
             var hint = Box("Hint", root, 0, -700, 1080, 50);
             Txt(hint, "Tap a planet to learn more", 30, TextSub);
+            hint.SetActive(false); // 底部提示文字不在界面上显示
 
             var scanRoot = NewUI("ScanRoot", root);
             var scanCtrl = scanRoot.AddComponent<ScanController>();

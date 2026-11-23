@@ -16,6 +16,8 @@ namespace SolarSystemAR
         private Vector3 planeLocalNormal;
         private Vector3 grabLocalOffset;
         private bool moving;
+        private Vector3 dragStart;
+        private bool moveReported;
         private bool movePlaneReady;
         private PlanetAnnotations annotations;
         private ScanPlanetContent content;
@@ -125,6 +127,8 @@ namespace SolarSystemAR
             if (cancelled) return;
             // 手势开始时固定模式，旋转过程中停顿不会突然切换为移动。
             moving = movePlaneReady && Time.unscaledTime - pressTime >= moveHoldSeconds;
+            dragStart = transform.position;
+            moveReported = false;
             var spin = GetComponent<SelfRotation>();
             if (spin != null && spin.enabled)
             {
@@ -144,6 +148,11 @@ namespace SolarSystemAR
                     var desired = ToWorldPoint(ToLocalPoint(hit) + grabLocalOffset);
                     var anchor = ToWorldPoint(anchorLocalPosition);
                     transform.position = anchor + Vector3.ClampMagnitude(desired - anchor, moveRadius);
+                    if (!moveReported && (transform.position - dragStart).sqrMagnitude >= .003f * .003f)
+                    {
+                        moveReported = true;
+                        if (annotations != null) annotations.ReportGesture(PlanetGesture.Move);
+                    }
                 }
                 return;
             }

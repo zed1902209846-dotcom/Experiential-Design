@@ -54,6 +54,17 @@ namespace SolarSystemAR
             return PlaceLabel(safe, target, planets, occupied, null, out rect);
         }
 
+        public static bool PlaceProfileToLeft(Rect safe, Rect target, IList<Rect> obstacles, IList<Rect> occupied,
+            Vector2 preferred, out Rect rect)
+        {
+            var free = FreeSpace(safe, obstacles, PlanetGap);
+            foreach (var profile in occupied) Subtract(free, Expand(profile, PanelGap));
+            var minimum = new Vector2(212f, 190f);
+            // Prefer directly beside the planet. A place above or below its left half can fit near an edge.
+            return FindSpace(free, target, preferred, minimum, out rect, rightLimit: target.xMin - PanelGap)
+                || FindSpace(free, target, preferred, minimum, out rect, rightLimit: target.center.x - PanelGap);
+        }
+
         /// previousOffset：上一帧名称中心相对星球中心的偏移。上下两侧得分接近时保持原来的一侧，
         /// 避免追踪抖动让名称在星球上方和下方之间来回跳。
         public static bool PlaceLabel(Rect safe, Rect target, IList<Rect> planets, IList<Rect> occupied,
@@ -84,12 +95,14 @@ namespace SolarSystemAR
         }
 
         private static bool FindSpace(List<Rect> free, Rect target, Vector2 preferred, Vector2 minimum, out Rect result,
-            Vector2? previousOffset = null)
+            Vector2? previousOffset = null, float rightLimit = float.PositiveInfinity)
         {
             result = Rect.zero;
             float best = float.PositiveInfinity;
-            foreach (var space in free)
+            foreach (var available in free)
             {
+                var space = available;
+                space.xMax = Mathf.Min(space.xMax, rightLimit);
                 float width = Mathf.Min(preferred.x, space.width);
                 float height = Mathf.Min(preferred.y, space.height);
                 if (width < minimum.x || height < minimum.y) continue;

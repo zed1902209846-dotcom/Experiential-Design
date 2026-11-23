@@ -24,9 +24,11 @@ namespace SolarSystemAR
         private int firstTouchId;
         private int secondTouchId;
         private bool pinching;
+        private bool resizeReported;
         private bool blockedUntilRelease;
         private PointerEventData pointer;
         private EventSystem pointerOwner;
+        public event System.Action Resized;
 
         private void Awake()
         {
@@ -109,6 +111,7 @@ namespace SolarSystemAR
                 gestureDistance = distance;
                 gestureScale = transform.localScale;
                 pinching = true;
+                resizeReported = false;
                 return;
             }
 
@@ -117,6 +120,12 @@ namespace SolarSystemAR
             float multiplier = Mathf.Clamp(
                 gestureScale.magnitude / initialScale.magnitude * distance / gestureDistance, min, max);
             transform.localScale = initialScale * multiplier;
+            if (!resizeReported && Mathf.Abs(transform.localScale.magnitude - gestureScale.magnitude)
+                >= gestureScale.magnitude * .06f)
+            {
+                resizeReported = true;
+                Resized?.Invoke();
+            }
         }
 
         private static PlanetPinchScale PlanetAtPosition(Camera camera, Vector2 position)
