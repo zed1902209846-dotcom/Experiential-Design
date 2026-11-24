@@ -1,4 +1,4 @@
-# AR Solar System
+# AstroScape
 
 An Android augmented reality learning app built with Unity and Vuforia. Scan physical planet cards to explore interactive 3D planets, read short profiles, and compare gravity through a shared jumping experiment. The project is being developed for hands-on learning in a museum setting.
 
@@ -26,11 +26,12 @@ Open the cloned folder in Unity `6000.3.23f1` and allow package resolution and a
 ## Run the app
 
 1. Open `Assets/Scenes/App/MainMenuScene.unity`, the first scene in Build Settings.
-2. Tap the scan icon near the bottom of the home screen to enter `ScanScene`. No account or sign-in is required.
-3. Point the camera at a supported physical planet card.
-4. Scan a second planet card to activate the Gravity Lab.
+2. Tap **Start scanning** to enter `ScanScene`.
+3. Place one whole planet card in the scanner frame. Tap the planet for its AR profile.
+4. Place a different planet card next to the first, with both cards in view. The Gravity Lab opens at the bottom.
+5. Pick an answer, start the experiment, and read the explanation after it finishes. Tap **End experience** to return to the home screen.
 
-The home screen uses the text-free illustration in `Assets/UI/HomeArtwork.png`. The artwork retains its aspect ratio, and the scan control adapts to the screen's safe area.
+The home screen uses the illustration in `Assets/UI/HomeArtwork.png`. The artwork retains its aspect ratio, and the title, guide, and scan button adapt to the screen's safe area.
 
 AR recognition requires a compatible Android device or a configured webcam in Unity Play Mode. Editor tracking simulations can exercise the interaction logic, but they do not replace testing physical cards on a phone.
 
@@ -40,7 +41,7 @@ AR recognition requires a compatible Android device or a configured webcam in Un
 
 | Action | Result |
 | --- | --- |
-| Tap a planet or its name | Open its English information panel |
+| Tap a planet or its name | Open its English AR information panel |
 | Drag a planet with one finger | Rotate it; automatic rotation pauses during the drag |
 | Release the drag | Resume automatic rotation |
 | Pinch with two fingers | Resize the visible planet nearest the gesture center |
@@ -53,9 +54,9 @@ Dragging does not open the information panel. After a pinch, lift and press agai
 
 The eight planets, Sun, and Solar System each have an Art-generated panel skin, stored in `Assets/Resources/UI/PlanetInfoPanels.png`. Titles and descriptions remain native Unity text so they can be laid out and scrolled independently of the artwork.
 
-Panels remain front-facing in screen space. Their layout avoids visible planets, jump trajectories, other panels, and the bottom interaction hint. A single panel is capped at 320 × 400 Canvas units; multiple panels are capped at 340 units in height. When space is limited, panels become smaller or temporarily collapse to a name entry. They return when space becomes available, preserving their content and scroll position. Tapping a collapsed panel's name prioritizes it for reading.
+The panels are world-space Canvases at the planet's depth. They follow the cards on the left side of each planet and face the camera for reading. The layout avoids visible planets, jump trajectories, other panels, and the bottom lab. If the left side lacks space, the panel can shift up or down on that side or temporarily collapse to the planet's name. It reappears with its scroll position when space opens up. Losing tracking closes the panel.
 
-Names, panel connector lines, and gravity figures share a stable center supplied by `ScanPlanetContent`. Imported visual geometry is centered before rotation, and a rotation-independent envelope controls placement. Rotating a planet or Saturn's rings therefore does not move the UI anchor. Moving a card and resizing a planet still update the anchor and its reserved space.
+Names, panels, and gravity figures share a stable center supplied by `ScanPlanetContent`. Imported visual geometry is centered before rotation, and a rotation-independent envelope controls placement. Rotating a planet or Saturn's rings therefore does not move the UI anchor. Moving a card and resizing a planet still update the anchor and its reserved space.
 
 ## Gravity Lab: guess, then jump
 
@@ -68,7 +69,20 @@ When two planet cards are tracked, a stick figure stands on each selected planet
 
 The interface uses short prompts and symbols. Heights and answers stay hidden before the reveal. Predictions and planet switching are locked during a jump. Changing the compared pair or losing a selected card resets the round; repeated tracking notifications for the same pair preserve it.
 
-When three or more planet cards are tracked, use the arrows above the choices to change the compared pair. The layout reserves space for the planets and their full jump trajectories. A compact layout keeps all three prediction choices and the jump/retry control available when space is limited. The full panel is up to 280 Canvas units high; compact mode is 160 units high.
+When three or more planet cards are tracked, use the arrows beside the question to change the compared pair. The lab stays centered at the bottom of the screen inside the device's safe area. On phones, the action button sits below the answer choices. On wider screens, it sits beside them, leaving more vertical space for the AR view. Planet labels and information panels avoid the lab and the projected jump trajectories.
+
+### More experiments: day, year, and size
+
+The tabs at the top of the lab panel switch between four experiments. All of them use the same guess, watch, reveal round, and each needs two planet cards.
+
+| Tab | Question | What the visitor watches |
+| --- | --- | --- |
+| JUMP | Who jumps higher? | Both stick figures jump at once |
+| DAY | Whose day is shorter? | Both planets spin at their true relative speeds; Venus spins backwards |
+| YEAR | Whose year is shorter? | Both planets leave their cards and circle the Sun, the shorter year on the inner track; progress bars show the laps |
+| SIZE | Which is bigger? | The larger planet grows a little and the smaller one shrinks to its true relative diameter |
+
+Changing tab starts a fresh prediction; tabs are locked while a demonstration is running. In the YEAR experiment the planets circle the Sun card when it is on the table, and a small stand-in Sun placed between them otherwise. Orbit speeds are to scale; orbit distances are not. Planet sizes, positions, and spin speeds return to normal when the visitor taps **AGAIN**, changes tab, or changes the compared pair.
 
 ### Physics model
 
@@ -129,7 +143,8 @@ Main interaction entry points:
 - `ScanPlanetContent` creates and centers models and provides stable display bounds.
 - `PlanetAnnotations` and `PlanetPanelLayout` place readable names and profiles.
 - `PlanetTapTarget` and `PlanetPinchScale` handle rotation, taps, and resizing.
-- `GravityJumpComparison` coordinates the figures, prediction UI, and animation.
+- `GravityJumpComparison` coordinates the lab panel, the four experiments, and their animations.
+- `PlanetLab` holds each experiment's values, winner rule, and wording; `LabSkin` draws the panel's rounded shapes.
 - `GravityGuessRound` manages the guess/jump/reveal state.
 - `PlanetGravity` contains the gravity values and jump equations.
 

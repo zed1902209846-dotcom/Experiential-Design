@@ -148,8 +148,8 @@ namespace SolarSystemAR.EditorBuildScripts
             var scaler = canvasGo.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(1080, 1920);
-            // 匹配宽度：任意手机比例下可视宽度恒为 1080 参考单位，卡片（1020 宽）永不左右溢出。
-            scaler.matchWidthOrHeight = 0f;
+            // Expand：手机上可视宽度恒为 1080 参考单位（等同匹配宽度）；平板/横屏保证高度不少于 1920，HUD 不会被裁掉。
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
             var root = canvasGo.transform;
 
             var es = new GameObject("EventSystem", typeof(EventSystem), typeof(InputSystemUIInputModule));
@@ -176,6 +176,7 @@ namespace SolarSystemAR.EditorBuildScripts
 
             var hint = Box("Hint", root, 0, -700, 1080, 50);
             Txt(hint, "Tap a planet to learn more", 30, TextSub);
+            hint.SetActive(false); // 底部提示文字不在界面上显示
 
             var scanRoot = NewUI("ScanRoot", root);
             var scanCtrl = scanRoot.AddComponent<ScanController>();

@@ -1,0 +1,189 @@
+1
+00:00:00,000 --> 00:00:04,830
+Hello, this is AR Solar System: an Android
+AR app for museums.
+
+2
+00:00:05,260 --> 00:00:09,590
+Visitors scan printed planet cards, make a
+guess, and watch the planets prove it.
+
+3
+00:00:10,060 --> 00:00:15,830
+The project is designed for a table in the
+planet gallery of an astronomy museum,
+
+4
+00:00:16,140 --> 00:00:20,630
+where visitors scan printed cards with a
+tablet the museum provides.
+
+5
+00:00:20,680 --> 00:00:25,370
+Today, labels show numbers like 3.7 m/s².
+
+6
+00:00:25,780 --> 00:00:28,210
+Visitors can read them, but they can't
+test them.
+
+7
+00:00:28,260 --> 00:00:32,410
+Our goal is to answer three questions: why
+you jump higher on Mars,
+
+8
+00:00:32,460 --> 00:00:36,270
+what sets a day and a year, and how
+different the planets are in size.
+
+9
+00:00:36,500 --> 00:00:38,130
+AR cards suit this space.
+
+10
+00:00:38,180 --> 00:00:42,730
+The comparison is physical and shared, the
+Sun card is a light you can move,
+
+11
+00:00:42,980 --> 00:00:45,390
+and the museum only needs to print cards.
+
+12
+00:00:45,440 --> 00:00:49,270
+Because visitors stand and stay briefly,
+we use short prompts,
+
+13
+00:00:49,320 --> 00:00:51,730
+no sign-in, and a screen that stays awake.
+
+14
+00:00:52,320 --> 00:00:55,910
+Our visitor is a child on a family visit,
+sharing one phone.
+
+15
+00:00:55,960 --> 00:01:00,120
+The journey has six stages, from arriving
+to the reveal,
+
+16
+00:01:00,240 --> 00:01:02,970
+and excitement peaks when the answer
+appears.
+
+17
+00:01:03,360 --> 00:01:06,650
+Every interaction starts from a card or a
+fingertip:
+
+18
+00:01:06,700 --> 00:01:10,610
+tap, drag, pinch, add a second card, or
+add the Sun card.
+
+19
+00:01:10,660 --> 00:01:13,610
+We also tested the guess-first loop on
+paper,
+
+20
+00:01:13,660 --> 00:01:17,850
+as a Wizard of Oz test, with a person
+acting as the app.
+
+21
+00:01:17,900 --> 00:01:20,190
+Here is the prototype in action.
+
+22
+00:01:24,220 --> 00:01:27,820
+The visitor opens the app and taps scan.
+
+23
+00:01:28,860 --> 00:01:33,710
+Pointing the camera at the Earth card
+brings the planet onto the table.
+
+24
+00:01:35,400 --> 00:01:41,700
+A pinch resizes it, and a drag spins it,
+so visitors can look from any side.
+
+25
+00:01:45,560 --> 00:01:47,790
+Now the Sun card joins.
+
+26
+00:01:47,960 --> 00:01:54,710
+As the visitor moves it, Earth's lit half
+turns to face it, showing day and night.
+
+27
+00:01:59,440 --> 00:02:01,390
+Adding a second card, Saturn,
+
+28
+00:02:01,440 --> 00:02:06,765
+opens the lab with four experiments: jump,
+day, year, and size.
+
+29
+00:02:07,040 --> 00:02:09,440
+First: who jumps higher?
+
+30
+00:02:09,740 --> 00:02:12,470
+The visitor guesses Earth, and taps jump.
+
+31
+00:02:16,160 --> 00:02:18,120
+Saturn wins, by 4 centimetres!
+
+32
+00:02:18,170 --> 00:02:20,670
+Its gravity is close to Earth's.
+
+33
+00:02:20,720 --> 00:02:23,770
+Next: whose year is shorter? Tap orbit,
+
+34
+00:02:24,300 --> 00:02:26,750
+and both planets circle the Sun card.
+
+35
+00:02:26,973 --> 00:02:29,890
+Earth laps Saturn again and again.
+
+36
+00:02:30,500 --> 00:02:35,030
+The core prototype was built between the
+10th and the 14th of November,
+
+37
+00:02:35,100 --> 00:02:39,890
+including Sun-card lighting, four
+experiments, and an Android build.
+
+38
+00:02:40,080 --> 00:02:44,490
+Next, we will print the cards and test
+with real visitors under gallery lighting,
+
+39
+00:02:44,540 --> 00:02:47,910
+where glare and tracking loss are the main
+risks.
+
+40
+00:02:48,540 --> 00:02:55,365
+These are our sources for the learning
+approach, the planetary data, and the
+tools.
+
+41
+00:02:56,240 --> 00:02:58,250
+Thank you. Scan, guess, and watch.

@@ -1,5 +1,5 @@
-using System.Collections.Generic;
 using System.Text;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -7,7 +7,9 @@ using UnityEngine.UI;
 
 namespace SolarSystemAR
 {
-    /// 可读的屏幕空间标注：位置跟随 AR 模型，文字不随模型自转。
+    public enum PlanetGesture { Resize, Move }
+
+    /// 行星名称使用屏幕空间，介绍面板则位于行星旁的 AR 世界空间。
     public class PlanetAnnotations : MonoBehaviour
     {
         private class Annotation
@@ -18,28 +20,29 @@ namespace SolarSystemAR
             public bool tracked;
             public bool visible;
             public Rect screenBounds;
-            public Vector2 screenAnchor;
             public Profile profile;
             public bool open;
             public bool panelVisible;
+            public bool reportedOpen;
+            public Vector2? labelOffset;
+            // 实际显示的位置：平滑追向布局结果；null 表示刚出现，直接就位。
+            public Vector2? labelShown;
         }
 
         private class Profile
         {
-            public RectTransform panel, leader, viewport, close, track;
+            public RectTransform panel, viewport, close, track;
+            public Canvas canvas;
             public Text title, tagline, body;
             public ScrollRect scroll;
             public float lastBodyWidth = -1f;
+            public bool resetScroll;
         }
 
         private readonly Dictionary<ScanPlanetContent, Annotation> annotations = new Dictionary<ScanPlanetContent, Annotation>();
         private readonly HashSet<int> pressedPointers = new HashSet<int>();
         private readonly List<Rect> labelRects = new List<Rect>();
         private readonly List<Annotation> openAnnotations = new List<Annotation>();
-        private readonly List<Annotation> visibleProfiles = new List<Annotation>();
-        private readonly List<Rect> profileTargets = new List<Rect>();
-        private readonly List<Rect> profileRects = new List<Rect>();
-        private readonly List<Rect> planetRects = new List<Rect>();
         private readonly List<Rect> layoutObstacles = new List<Rect>();
         private GravityJumpComparison gravityLab;
         private readonly Color accent = new Color(0.32f, 0.88f, 0.96f);
@@ -57,6 +60,11 @@ namespace SolarSystemAR
         };
         private Annotation lastOpened;
         private float suppressTapUntil;
+
+        public event System.Action<PlanetData.Info> ProfileOpened;
+        public event System.Action<PlanetGesture> GesturePracticed;
+
+        public void ReportGesture(PlanetGesture gesture) => GesturePracticed?.Invoke(gesture);
 
         public bool IsOpen => openAnnotations.Count > 0;
         public int OpenPanelCount => openAnnotations.Count;
@@ -78,13 +86,13 @@ namespace SolarSystemAR
             var root = new GameObject("PlanetAnnotations", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
             canvasRect = root.GetComponent<RectTransform>();
             var canvas = root.GetComponent<Canvas>();
-            // 面板与世界中的模型分离：相机移动或星球旋转时，介绍仍正对屏幕且文字不倾斜。
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 50;
             var scaler = root.GetComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(720, 1280);
-            scaler.matchWidthOrHeight = 0f;
+            // Expand：手机（比 9:16 更高）与按宽度匹配完全一致；平板和横屏则保证至少有 720×1280 的排版空间。
+            scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
         }
 
         private void Update()
@@ -148,6 +156,8 @@ namespace SolarSystemAR
         {
             if (!annotations.TryGetValue(content, out var annotation)) return;
             annotation.tracked = false;
+            annotation.labelOffset = null;
+            annotation.labelShown = null;
             annotation.label.gameObject.SetActive(false);
             Close(content);
         }
@@ -156,39 +166,24 @@ namespace SolarSystemAR
         {
             if (!annotations.TryGetValue(content, out var annotation) || !annotation.tracked) return;
             if (annotation.profile == null) annotation.profile = BuildPanel(annotation);
-            var profile = annotation.profile;
             lastOpened = annotation;
-            // 收起状态点击名称时也提高优先级，优先为用户刚选中的星球安排阅读空间。
-            if (annotation.open) openAnnotations.Remove(annotation);
             if (!annotation.open)
             {
                 annotation.open = true;
-                openAnnotations.Add(annotation);
-                profile.title.text = DisplayName(annotation.info).ToUpperInvariant();
-                profile.tagline.text = annotation.info.tagline;
-                profile.body.text = Description(annotation.info);
-                profile.lastBodyWidth = -1f;
-                profile.scroll.StopMovement();
-                profile.scroll.verticalNormalizedPosition = 1f;
+                annotation.profile.resetScroll = true;
             }
-            else openAnnotations.Add(annotation);
-            profile.panel.gameObject.SetActive(true);
-            profile.panel.SetAsLastSibling();
+            else openAnnotations.Remove(annotation);
+            openAnnotations.Add(annotation);
             LateUpdate();
-            Canvas.ForceUpdateCanvases();
-            ResizeBody(profile);
         }
 
         public void Close(ScanPlanetContent content)
         {
             if (!annotations.TryGetValue(content, out var annotation)) return;
             annotation.open = false;
+            annotation.reportedOpen = false;
             openAnnotations.Remove(annotation);
-            if (annotation.profile != null)
-            {
-                annotation.profile.panel.gameObject.SetActive(false);
-                annotation.profile.leader.gameObject.SetActive(false);
-            }
+            if (annotation.profile != null) annotation.profile.panel.gameObject.SetActive(false);
             if (lastOpened == annotation)
                 lastOpened = openAnnotations.Count > 0 ? openAnnotations[openAnnotations.Count - 1] : null;
         }
@@ -201,63 +196,69 @@ namespace SolarSystemAR
         private void LateUpdate()
         {
             var camera = Camera.main;
-            if (camera == null || canvasRect == null) return;
-            if (camera.GetComponent<PhysicsRaycaster>() == null) camera.gameObject.AddComponent<PhysicsRaycaster>();
-            var safe = SafeRect();
-            visibleProfiles.Clear();
-            profileTargets.Clear();
-            planetRects.Clear();
+            if (camera == null || canvasRect == null)
+            {
+                foreach (var annotation in openAnnotations) annotation.profile.panel.gameObject.SetActive(false);
+                return;
+            }
+            if (camera.GetComponent<PhysicsRaycaster>() == null)
+                camera.gameObject.AddComponent<PhysicsRaycaster>();
+
+            Rect safe = SafeRect();
+            layoutObstacles.Clear();
+            labelRects.Clear();
             foreach (var annotation in annotations.Values)
             {
-                annotation.visible = annotation.tracked && Project(annotation, camera, out annotation.screenBounds);
+                annotation.visible = annotation.tracked && annotation.content != null
+                    && annotation.content.TryGetScreenBounds(camera, canvasRect, out annotation.screenBounds);
                 annotation.panelVisible = false;
-                if (annotation.visible) planetRects.Add(annotation.screenBounds);
-                annotation.label.gameObject.SetActive(annotation.visible && !annotation.open);
-                if (annotation.profile == null) continue;
-                annotation.profile.panel.gameObject.SetActive(annotation.visible && annotation.open);
-                annotation.profile.leader.gameObject.SetActive(false);
+                if (annotation.visible) layoutObstacles.Add(annotation.screenBounds);
             }
-            // 打开顺序稳定；各介绍框拥有独立的内容、滚动状态和关闭按钮。
+            if (gravityLab == null) gravityLab = GetComponent<GravityJumpComparison>();
+            if (gravityLab != null) layoutObstacles.AddRange(gravityLab.ScreenExclusions);
+
+            var preferred = new Vector2(320f, openAnnotations.Count == 1 ? 400f : 340f);
+            // Give the most recently tapped planet priority when left-side space is shared.
             for (int i = openAnnotations.Count - 1; i >= 0; i--)
             {
                 var annotation = openAnnotations[i];
-                if (!annotation.visible) continue;
-                visibleProfiles.Add(annotation);
-                profileTargets.Add(annotation.screenBounds);
-            }
-            layoutObstacles.Clear();
-            layoutObstacles.AddRange(planetRects);
-            if (gravityLab == null) gravityLab = GetComponent<GravityJumpComparison>();
-            if (gravityLab != null) layoutObstacles.AddRange(gravityLab.ScreenExclusions);
-            bool besidePlanets = PlanetPanelLayout.Arrange(safe, profileTargets, layoutObstacles, profileRects);
-            for (int i = 0; i < visibleProfiles.Count; i++)
-            {
-                var annotation = visibleProfiles[i];
                 var profile = annotation.profile;
-                var rect = profileRects[i];
-                annotation.panelVisible = rect.width > 0 && rect.height > 0;
-                profile.panel.gameObject.SetActive(annotation.panelVisible);
-                if (!annotation.panelVisible) continue;
-                profile.panel.sizeDelta = rect.size;
-                profile.panel.anchoredPosition = new Vector2(rect.xMin, rect.yMax);
-                profile.panel.localRotation = Quaternion.identity;
-                ApplyProfileLayout(profile, rect.height);
-                ResizeBody(profile);
-                // 密集排列时不画穿过其他卡片的连接线，卡片标题仍标明所属星球。
-                if (besidePlanets) PositionLeader(profile, annotation.screenAnchor, rect);
+                if (!annotation.visible
+                    || !PlanetPanelLayout.PlaceProfileToLeft(safe, annotation.screenBounds, layoutObstacles,
+                        labelRects, preferred, out Rect rect)
+                    || !PositionProfile(profile, annotation.content.AnchorWorldPosition, camera, rect))
+                {
+                    profile.panel.gameObject.SetActive(false);
+                    continue;
+                }
+                annotation.panelVisible = true;
+                labelRects.Add(rect);
+                if (!annotation.reportedOpen)
+                {
+                    annotation.reportedOpen = true;
+                    ProfileOpened?.Invoke(annotation.info);
+                }
             }
 
-            labelRects.Clear();
-            labelRects.AddRange(profileRects);
             foreach (var annotation in annotations.Values)
             {
-                if (!annotation.visible || annotation.panelVisible) continue;
+                if (!annotation.visible || annotation.panelVisible)
+                {
+                    annotation.label.gameObject.SetActive(false);
+                    annotation.labelShown = null;
+                    continue;
+                }
                 Rect labelRect;
-                bool placed = PlanetPanelLayout.PlaceLabel(safe, annotation.screenBounds, layoutObstacles, labelRects, out labelRect);
+                bool placed = PlanetPanelLayout.PlaceLabel(safe, annotation.screenBounds, layoutObstacles, labelRects,
+                    annotation.labelOffset, out labelRect);
                 annotation.label.gameObject.SetActive(placed);
-                if (!placed) continue;
+                if (!placed) { annotation.labelShown = null; continue; }
+                annotation.labelShown = annotation.labelShown.HasValue
+                    ? PlanetPanelLayout.Follow(annotation.labelShown.Value, labelRect.center, Time.unscaledDeltaTime)
+                    : labelRect.center;
                 annotation.label.sizeDelta = labelRect.size;
-                annotation.label.anchoredPosition = labelRect.center;
+                annotation.label.anchoredPosition = annotation.labelShown.Value;
+                annotation.labelOffset = labelRect.center - annotation.screenBounds.center;
                 labelRects.Add(labelRect);
             }
         }
@@ -268,9 +269,9 @@ namespace SolarSystemAR
             bool compact = header <= 100;
             var background = profile.panel.GetComponent<Image>();
             background.pixelsPerUnitMultiplier = compact ? 1.7f : 1f;
-            float closeSize = Mathf.Clamp(header - 12, 40, 48);
+            float closeSize = Mathf.Clamp(header - 16, 48, 64);
             profile.close.sizeDelta = new Vector2(closeSize, closeSize);
-            TopRect(profile.title.rectTransform, 18, 12, compact ? 88 : 124, compact ? 38 : 52);
+            TopRect(profile.title.rectTransform, 18, 12, compact ? 82 : 110, compact ? 55 : 52);
             int bodySize = compact ? 24 : 28;
             if (profile.body.fontSize != bodySize)
             {
@@ -278,20 +279,39 @@ namespace SolarSystemAR
                 profile.lastBodyWidth = -1f;
             }
             profile.tagline.gameObject.SetActive(header > 100);
+            TopRect(profile.tagline.rectTransform, 18, 72, 28, 48);
             Stretch(profile.viewport, 18, header, 28, 14);
             profile.track.offsetMin = new Vector2(-14, 14);
             profile.track.offsetMax = new Vector2(-8, -header);
         }
 
-        private void PositionLeader(Profile profile, Vector2 anchor, Rect card)
+        private bool PositionProfile(Profile profile, Vector3 planetPosition, Camera camera, Rect rect)
         {
-            var start = anchor;
-            var end = new Vector2(Mathf.Clamp(start.x, card.xMin, card.xMax), Mathf.Clamp(start.y, card.yMin, card.yMax));
-            var delta = end - start;
-            profile.leader.gameObject.SetActive(delta.sqrMagnitude > 1f);
-            profile.leader.anchoredPosition = (start + end) * 0.5f;
-            profile.leader.sizeDelta = new Vector2(delta.magnitude, 2);
-            profile.leader.localRotation = Quaternion.Euler(0, 0, Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg);
+            float depth = camera.WorldToScreenPoint(planetPosition).z;
+            if (depth <= camera.nearClipPlane || depth >= camera.farClipPlane) return false;
+
+            // The same projected rectangle is used by the world-space canvas and the annotation solver.
+            // Placing it at the planet's depth keeps it with the card while its text remains readable.
+            Vector2 center = RectTransformUtility.WorldToScreenPoint(null, canvasRect.TransformPoint(rect.center));
+            Vector2 right = RectTransformUtility.WorldToScreenPoint(null,
+                canvasRect.TransformPoint(new Vector2(rect.xMax, rect.center.y)));
+            Vector3 position = camera.ScreenToWorldPoint(new Vector3(center.x, center.y, depth));
+            Vector3 edge = camera.ScreenToWorldPoint(new Vector3(right.x, right.y, depth));
+            profile.canvas.worldCamera = camera;
+            profile.panel.SetPositionAndRotation(position, camera.transform.rotation);
+            profile.panel.localScale = Vector3.one * (Vector3.Distance(position, edge) * 2f / rect.width);
+            profile.panel.sizeDelta = rect.size;
+            ApplyProfileLayout(profile, rect.height);
+            profile.panel.gameObject.SetActive(true);
+            ResizeBody(profile);
+            if (profile.resetScroll)
+            {
+                Canvas.ForceUpdateCanvases();
+                profile.scroll.StopMovement();
+                profile.scroll.verticalNormalizedPosition = 1f;
+                profile.resetScroll = false;
+            }
+            return true;
         }
 
         private void ResizeBody(Profile profile)
@@ -323,21 +343,14 @@ namespace SolarSystemAR
             return Rect.MinMaxRect(min.x + 16, bottom, max.x - 16, max.y - 84);
         }
 
-        private bool Project(Annotation annotation, Camera camera, out Rect rect)
-        {
-            rect = Rect.zero;
-            if (annotation.content == null || !annotation.content.TryGetScreenBounds(camera, canvasRect, out rect)) return false;
-            var point = camera.WorldToScreenPoint(annotation.content.AnchorWorldPosition);
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, point, null, out annotation.screenAnchor);
-            return true;
-        }
-
         private void AddTapTarget(ScanPlanetContent content)
         {
             var model = content.Model;
             var tap = model.GetComponent<PlanetTapTarget>();
             if (tap == null) tap = model.AddComponent<PlanetTapTarget>();
             tap.Initialize(this, content);
+            var pinch = model.GetComponent<PlanetPinchScale>();
+            if (pinch != null) pinch.Resized += () => ReportGesture(PlanetGesture.Resize);
             // 给整个可视模型添加一个本地包围盒，土星环、太阳系组合模型也可点击。
             var bounds = new Bounds();
             bool found = false;
@@ -362,12 +375,10 @@ namespace SolarSystemAR
         private Profile BuildPanel(Annotation annotation)
         {
             var profile = new Profile();
-            profile.leader = NewRect("PlanetConnector_" + annotation.info.id, canvasRect);
-            var line = profile.leader.gameObject.AddComponent<Image>();
-            line.color = accent;
-            line.raycastTarget = false;
-            profile.panel = NewRect("PlanetInfo_" + annotation.info.id, canvasRect);
-            profile.panel.pivot = new Vector2(0, 1);
+            profile.panel = NewRect("PlanetInfo_" + annotation.info.id, null);
+            profile.canvas = profile.panel.gameObject.AddComponent<Canvas>();
+            profile.canvas.renderMode = RenderMode.WorldSpace;
+            profile.panel.gameObject.AddComponent<GraphicRaycaster>();
             var background = profile.panel.gameObject.AddComponent<Image>();
             var skin = ProfileSkin(annotation.info.id);
             if (skin != null)
@@ -384,11 +395,16 @@ namespace SolarSystemAR
                 border.effectDistance = new Vector2(1, -1);
             }
 
-            profile.title = NewText("Title", profile.panel, "EARTH", 38, Color.white);
+            profile.title = NewText("Title", profile.panel, DisplayName(annotation.info).ToUpperInvariant(), 38, Color.white);
             TopRect(profile.title.rectTransform, 22, 20, 130, 52);
             profile.title.fontStyle = FontStyle.Bold;
-            profile.title.resizeTextForBestFit = true; profile.title.resizeTextMinSize = 24; profile.title.resizeTextMaxSize = 38;
-            profile.tagline = NewText("Tagline", profile.panel, "Our Only Home", 24, accent);
+            profile.title.verticalOverflow = VerticalWrapMode.Truncate;
+            profile.title.resizeTextForBestFit = true; profile.title.resizeTextMinSize = 18; profile.title.resizeTextMaxSize = 38;
+            profile.tagline = NewText("Tagline", profile.panel, annotation.info.tagline, 24, accent);
+            profile.tagline.resizeTextForBestFit = true;
+            profile.tagline.resizeTextMinSize = 18;
+            profile.tagline.resizeTextMaxSize = 24;
+            profile.tagline.verticalOverflow = VerticalWrapMode.Truncate;
             TopRect(profile.tagline.rectTransform, 22, 78, 140, 44);
             var close = NewRect("CloseButton", profile.panel);
             profile.close = close;
@@ -407,7 +423,7 @@ namespace SolarSystemAR
             profile.scroll.horizontal = false; profile.scroll.vertical = true; profile.scroll.viewport = profile.viewport;
             profile.scroll.movementType = ScrollRect.MovementType.Clamped;
             profile.scroll.scrollSensitivity = 28;
-            profile.body = NewText("Description", profile.viewport, "", 32, new Color(0.91f, 0.95f, 0.98f));
+            profile.body = NewText("Description", profile.viewport, Description(annotation.info), 32, new Color(0.91f, 0.95f, 0.98f));
             profile.body.supportRichText = true; profile.body.lineSpacing = 1.15f;
             profile.body.rectTransform.anchorMin = new Vector2(0, 1); profile.body.rectTransform.anchorMax = Vector2.one;
             profile.body.rectTransform.pivot = new Vector2(0.5f, 1); profile.body.rectTransform.anchoredPosition = Vector2.zero;
@@ -426,7 +442,6 @@ namespace SolarSystemAR
             profile.scroll.verticalScrollbar = scrollbar;
             profile.scroll.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.AutoHide;
             profile.panel.gameObject.SetActive(false);
-            profile.leader.gameObject.SetActive(false);
             return profile;
         }
 
@@ -501,6 +516,8 @@ namespace SolarSystemAR
         private void OnDestroy()
         {
             if (canvasRect != null) Destroy(canvasRect.gameObject);
+            foreach (var annotation in annotations.Values)
+                if (annotation.profile != null) Destroy(annotation.profile.panel.gameObject);
             foreach (var skin in profileSkins.Values)
                 if (skin != null) Destroy(skin);
             profileSkins.Clear();

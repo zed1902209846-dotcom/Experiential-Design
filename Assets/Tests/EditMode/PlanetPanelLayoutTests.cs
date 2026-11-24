@@ -56,6 +56,34 @@ namespace SolarSystemAR.Tests
         }
 
         [Test]
+        public void ArProfileStaysToTheLeftAndAvoidsOtherUi()
+        {
+            var planet = new Rect(440, 500, 140, 140);
+            var dock = new Rect(0, 0, 720, 370);
+            var openProfile = new Rect(90, 580, 320, 290);
+            Assert.IsTrue(PlanetPanelLayout.PlaceProfileToLeft(Safe, planet, new[] { planet, dock },
+                new[] { openProfile }, new Vector2(320, 400), out Rect profile));
+            AssertInside(Safe, profile);
+            Assert.Less(profile.xMax, planet.xMin);
+            Assert.IsFalse(profile.Overlaps(dock));
+            Assert.IsFalse(profile.Overlaps(openProfile));
+        }
+
+        [Test]
+        public void ArProfileUsesSpaceAboveOrBelowTheLeftSideBeforeCollapsing()
+        {
+            var centralPlanet = new Rect(160, 485, 236, 236);
+            Assert.IsTrue(PlanetPanelLayout.PlaceProfileToLeft(Safe, centralPlanet, new[] { centralPlanet },
+                new Rect[0], new Vector2(320, 400), out Rect profile));
+            Assert.Less(profile.xMax, centralPlanet.center.x);
+            Assert.IsFalse(profile.Overlaps(centralPlanet));
+
+            var edgePlanet = new Rect(10, 485, 180, 180);
+            Assert.IsFalse(PlanetPanelLayout.PlaceProfileToLeft(Safe, edgePlanet, new[] { edgePlanet },
+                new Rect[0], new Vector2(320, 400), out profile));
+        }
+
+        [Test]
         public void LayoutIsDeterministic()
         {
             var planets = new[] { new Rect(80, 900, 160, 160), new Rect(460, 260, 160, 160) };
@@ -77,6 +105,61 @@ namespace SolarSystemAR.Tests
             Assert.IsFalse(label.Overlaps(planet));
             Assert.IsFalse(label.Overlaps(panels[0]));
             AssertInside(Safe, label);
+        }
+
+        [Test]
+        public void LabelKeepsItsSideWhenPlanetJitters()
+        {
+            var none = new List<Rect>();
+            Vector2? offset = null;
+            float side = 0;
+            // 星球在屏幕正中上下抖动几像素：上方和下方的得分交替领先。
+            for (int i = 0; i < 20; i++)
+            {
+                var planet = new Rect(Safe.center.x - 100, Safe.center.y - 100 + (i % 2 == 0 ? 4 : -4), 200, 200);
+                Assert.IsTrue(PlanetPanelLayout.PlaceLabel(Safe, planet, new[] { planet }, none, offset, out Rect label));
+                Assert.IsFalse(label.Overlaps(planet));
+                offset = label.center - planet.center;
+                float now = Mathf.Sign(offset.Value.y);
+                if (i > 0) Assert.AreEqual(side, now, "label flipped sides at step " + i);
+                side = now;
+            }
+        }
+
+        [Test]
+        public void PanelKeepsItsSideWhenPlanetJitters()
+        {
+            var panels = new List<Rect>();
+            var offsets = new List<Vector2?> { null };
+            float side = 0;
+            for (int i = 0; i < 20; i++)
+            {
+                var planet = new Rect(Safe.center.x - 100, Safe.center.y - 100 + (i % 2 == 0 ? 4 : -4), 200, 200);
+                Assert.IsTrue(PlanetPanelLayout.Arrange(Safe, new[] { planet }, new[] { planet }, offsets, panels));
+                Assert.IsFalse(panels[0].Overlaps(planet));
+                offsets[0] = panels[0].center - planet.center;
+                float now = Mathf.Sign(offsets[0].Value.y);
+                if (i > 0) Assert.AreEqual(side, now, "panel flipped sides at step " + i);
+                side = now;
+            }
+        }
+
+        [Test]
+        public void FollowDampsJitterButKeepsUpWithRealMoves()
+        {
+            var rest = new Vector2(100, 100);
+            var shown = rest;
+            float wobble = 0;
+            for (int i = 0; i < 60; i++)
+            {
+                shown = PlanetPanelLayout.Follow(shown, rest + new Vector2(0, i % 2 == 0 ? 4 : -4), 1f / 60f);
+                wobble = Mathf.Max(wobble, Mathf.Abs(shown.y - rest.y));
+            }
+            Assert.Less(wobble, 1f);
+
+            var far = new Vector2(100, 500);
+            for (int i = 0; i < 30; i++) shown = PlanetPanelLayout.Follow(shown, far, 1f / 60f);
+            Assert.Less(Vector2.Distance(shown, far), 4f);
         }
 
         [Test]

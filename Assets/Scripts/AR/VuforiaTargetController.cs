@@ -11,31 +11,35 @@ namespace SolarSystemAR
 
 #if VUFORIA_ENABLED
         private Vuforia.ObserverBehaviour observer;
-        private bool tracked;
+        private string trackedTargetName;
 
         private void OnEnable()
         {
             observer = GetComponent<Vuforia.ObserverBehaviour>();
-            if (observer != null) observer.OnTargetStatusChanged += OnStatusChanged;
+            if (observer == null) return;
+            observer.OnTargetStatusChanged += OnStatusChanged;
+            OnStatusChanged(observer, observer.TargetStatus);
         }
 
         private void OnDisable()
         {
             if (observer != null) observer.OnTargetStatusChanged -= OnStatusChanged;
-            if (tracked)
-            {
-                tracked = false;
-                Notify(false, observer != null ? observer.TargetName : simulateTargetName);
-            }
+            SetTrackedTarget(null);
         }
 
         private void OnStatusChanged(Vuforia.ObserverBehaviour behaviour, Vuforia.TargetStatus status)
         {
-            bool isTracking = status.Status == Vuforia.Status.TRACKED ||
-                              status.Status == Vuforia.Status.EXTENDED_TRACKED;
-            if (isTracking == tracked) return;
-            tracked = isTracking;
-            Notify(tracked, behaviour.TargetName);
+            // Extended tracking can retain a pose after the physical card leaves the camera view.
+            SetTrackedTarget(status.Status == Vuforia.Status.TRACKED ? behaviour.TargetName : null);
+        }
+
+        private void SetTrackedTarget(string targetName)
+        {
+            if (trackedTargetName == targetName) return;
+            string previousTargetName = trackedTargetName;
+            trackedTargetName = targetName;
+            if (!string.IsNullOrEmpty(previousTargetName)) Notify(false, previousTargetName);
+            if (!string.IsNullOrEmpty(targetName)) Notify(true, targetName);
         }
 #endif
 
@@ -44,8 +48,9 @@ namespace SolarSystemAR
             var scan = FindFirstObjectByType<ScanController>(FindObjectsInactive.Include);
             if (scan != null)
             {
-                if (found) scan.OnTrackingFound(targetName);
-                else scan.OnTrackingLost(targetName);
+                var content = GetComponentInChildren<ScanPlanetContent>(true);
+                if (found) scan.OnTrackingFound(targetName, content);
+                else scan.OnTrackingLost(targetName, content);
             }
             var legacy = FindFirstObjectByType<PlanetScanController>(FindObjectsInactive.Include);
             if (legacy != null)
